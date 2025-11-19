@@ -91,6 +91,96 @@ export const PowerUpTypes = {
         effect: 'Increased accuracy',
         rarity: 'legendary',
         duration: 15000
+    },
+    UNIT_TESTS: {
+        id: 'unittests',
+        name: 'Unit Tests',
+        emoji: '✅',
+        color: 0x00ff00,
+        effect: 'Auto-defend against bugs',
+        rarity: 'uncommon',
+        duration: 8000
+    },
+    DEBUGGER: {
+        id: 'debugger',
+        name: 'Debugger',
+        emoji: '🐛',
+        color: 0xff0000,
+        effect: 'Slow down enemies',
+        rarity: 'rare',
+        duration: 6000
+    },
+    VIM_MODE: {
+        id: 'vim',
+        name: 'Vim Mode',
+        emoji: '⚡',
+        color: 0x00ff00,
+        effect: 'Ultra-fast movement',
+        rarity: 'epic',
+        duration: 5000
+    },
+    STACK_TRACE: {
+        id: 'stacktrace',
+        name: 'Stack Trace',
+        emoji: '🔍',
+        color: 0xffaa00,
+        effect: 'Reveal enemy paths',
+        rarity: 'common',
+        duration: 10000
+    },
+    CODE_REVIEW: {
+        id: 'codereview',
+        name: 'Code Review',
+        emoji: '👁️',
+        color: 0x00aaff,
+        effect: 'Spot mistakes early',
+        rarity: 'rare',
+        duration: 7000
+    },
+    REFACTOR: {
+        id: 'refactor',
+        name: 'Refactor',
+        emoji: '♻️',
+        color: 0x00cc00,
+        effect: 'Optimize everything',
+        rarity: 'uncommon',
+        duration: 9000
+    },
+    HOTFIX: {
+        id: 'hotfix',
+        name: 'Hotfix',
+        emoji: '🚑',
+        color: 0xff0000,
+        effect: 'Emergency instant fix',
+        rarity: 'rare',
+        duration: 0
+    },
+    DEPLOYMENT: {
+        id: 'deployment',
+        name: 'Deployment',
+        emoji: '🚀',
+        color: 0xff6600,
+        effect: 'Massive damage burst',
+        rarity: 'epic',
+        duration: 0
+    },
+    MERGE_SUCCESS: {
+        id: 'merge',
+        name: 'Merge Success',
+        emoji: '🎯',
+        color: 0xffff00,
+        effect: 'Resolve all conflicts',
+        rarity: 'legendary',
+        duration: 12000
+    },
+    CLEAN_CODE: {
+        id: 'cleancode',
+        name: 'Clean Code',
+        emoji: '✨',
+        color: 0xffffff,
+        effect: 'Perfect execution',
+        rarity: 'epic',
+        duration: 8000
     }
 };
 
@@ -291,6 +381,40 @@ export default class PowerUpManager {
                     this.scene.health = Math.min(100, this.scene.health + 20);
                 }
                 break;
+
+            case 'hotfix':
+                // Emergency heal - restore more health
+                if (this.scene.playerHealth !== undefined) {
+                    this.scene.playerHealth = Math.min(100, this.scene.playerHealth + 50);
+                }
+                if (this.scene.playerSanity !== undefined) {
+                    this.scene.playerSanity = Math.min(100, this.scene.playerSanity + 30);
+                }
+                if (this.scene.health !== undefined) {
+                    this.scene.health = Math.min(100, this.scene.health + 40);
+                }
+                break;
+
+            case 'deployment':
+                // Massive damage - clear screen of enemies
+                if (this.scene.enemies) {
+                    this.scene.enemies.forEach(enemy => {
+                        if (enemy.enemyData) {
+                            enemy.enemyData.health = 0;
+                        }
+                    });
+
+                    // Screen shake effect
+                    if (this.scene.cameras && this.scene.cameras.main) {
+                        this.scene.cameras.main.shake(300, 0.01);
+                    }
+
+                    // Flash effect
+                    if (this.scene.particles) {
+                        this.scene.particles.flash(300, 255, 100, 0);
+                    }
+                }
+                break;
         }
     }
 
@@ -308,11 +432,19 @@ export default class PowerUpManager {
     getMultiplier(stat) {
         let multiplier = 1;
 
+        // Original power-ups
         if (this.isActive('coffee')) multiplier *= 1.3;
         if (this.isActive('energydrink')) multiplier *= 1.5;
         if (this.isActive('keyboard')) multiplier *= 2;
         if (this.isActive('copilot')) multiplier *= 1.8;
         if (this.isActive('pair')) multiplier *= 2;
+
+        // New power-ups
+        if (this.isActive('vim')) multiplier *= 2.5;
+        if (this.isActive('cleancode')) multiplier *= 2.2;
+        if (this.isActive('refactor')) multiplier *= 1.6;
+        if (this.isActive('unittests')) multiplier *= 1.4;
+        if (this.isActive('merge')) multiplier *= 1.7;
 
         return multiplier;
     }

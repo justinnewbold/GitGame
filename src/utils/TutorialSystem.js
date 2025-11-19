@@ -139,6 +139,70 @@ export default class TutorialSystem {
                     highlight: null,
                     duration: 4000
                 }
+            ],
+            DebugDungeonScene: [
+                {
+                    title: '🏰 Welcome to Debug Dungeon!',
+                    text: 'Explore a dungeon filled with bugs and errors!\nClear each room to progress.',
+                    highlight: null,
+                    duration: 3000
+                },
+                {
+                    title: '⚔️ Combat',
+                    text: 'Click to shoot projectiles at bugs!\nEach shot costs 10 mana.',
+                    highlight: null,
+                    duration: 3000
+                },
+                {
+                    title: '🚪 Room Progression',
+                    text: 'Defeat all bugs to unlock the exit door.\nEnter the door to proceed to the next room.',
+                    highlight: null,
+                    duration: 4000
+                },
+                {
+                    title: '💎 Treasures',
+                    text: 'Collect treasures to restore health and mana!\nThey give bonus points too!',
+                    highlight: null,
+                    duration: 3000
+                },
+                {
+                    title: '🎯 Survive!',
+                    text: 'Clear all 10 rooms to win!\nMana regenerates over time.\n\nGood luck, dungeon crawler! 🗡️',
+                    highlight: null,
+                    duration: 4000
+                }
+            ],
+            RefactorRaceScene: [
+                {
+                    title: '🏎️ Welcome to Refactor Race!',
+                    text: 'Refactor messy code against the clock!\nSpeed and accuracy are key!',
+                    highlight: null,
+                    duration: 3000
+                },
+                {
+                    title: '📋 Code Issues',
+                    text: 'Each code block shows a common refactoring issue.\nRead the problem and the suggested fix.',
+                    highlight: null,
+                    duration: 4000
+                },
+                {
+                    title: '✅ Refactor or Skip',
+                    text: 'Click "Refactor" to fix the code and earn points!\nSkip if you\'re unsure, but you\'ll lose your streak.',
+                    highlight: null,
+                    duration: 4000
+                },
+                {
+                    title: '⏱️ Time Bonus',
+                    text: 'Each successful refactor adds time to the clock!\nBuild a streak for multiplier bonuses!',
+                    highlight: null,
+                    duration: 4000
+                },
+                {
+                    title: '⌨️ Keyboard Shortcuts',
+                    text: 'SPACE = Refactor | S = Skip\n\nRefactor fast and refactor clean! 🚀',
+                    highlight: null,
+                    duration: 4000
+                }
             ]
         };
 

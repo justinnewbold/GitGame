@@ -26,7 +26,9 @@ export default class GameData {
                 gitSurvivor: { highScore: 0, gamesPlayed: 0, enemiesKilled: 0 },
                 codeDefense: { highWave: 0, gamesPlayed: 0, towersPlaced: 0 },
                 prRush: { bestAccuracy: 0, gamesPlayed: 0, prsReviewed: 0 },
-                devCommander: { maxSprints: 0, gamesPlayed: 0, tasksCompleted: 0 }
+                devCommander: { maxSprints: 0, gamesPlayed: 0, tasksCompleted: 0 },
+                debugDungeon: { highScore: 0, gamesPlayed: 0, bugsFixed: 0 },
+                refactorRace: { highScore: 0, gamesPlayed: 0, totalRefactors: 0 }
             },
             achievements: [],
             unlockedContent: {

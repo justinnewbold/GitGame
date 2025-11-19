@@ -78,6 +78,18 @@ export default class MainMenuScene extends Phaser.Scene {
             'DevCommanderScene',
             0x7e4ae2);
 
+        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 4,
+            '🏰 Debug Dungeon',
+            'Dungeon Crawler: Clear rooms of bugs!',
+            'DebugDungeonScene',
+            0x9b59b6);
+
+        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 5,
+            '🏎️ Refactor Race',
+            'Time Trial: Refactor code at speed!',
+            'RefactorRaceScene',
+            0x16a085);
+
         // Settings button
         const settingsBtn = this.add.text(width - 20, 20, '⚙️ Settings', {
             fontSize: '14px',

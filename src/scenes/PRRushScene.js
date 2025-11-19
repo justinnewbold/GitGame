@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import SoundManager from '../utils/SoundManager.js';
+import ParticleEffects from '../utils/ParticleEffects.js';
+import { gameData } from '../utils/GameData.js';
 
 export default class PRRushScene extends Phaser.Scene {
     constructor() {
@@ -12,14 +15,27 @@ export default class PRRushScene extends Phaser.Scene {
         this.timeRemaining = 60;
         this.currentPR = null;
         this.gameOver = false;
+
+        // Difficulty
+        const difficulty = gameData.getDifficulty();
+        this.difficultyMult = difficulty === 'hard' ? 0.8 : difficulty === 'nightmare' ? 0.6 : 1.0;
+        this.timeRemaining = Math.floor(60 * this.difficultyMult);
     }
 
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
+        // Initialize systems
+        this.sounds = new SoundManager(this);
+        this.particles = new ParticleEffects(this);
+
         // Background
         this.add.rectangle(0, 0, width, height, 0x0a0a1a).setOrigin(0);
+
+        // Track stats
+        gameData.updateStat('prRush.gamesPlayed', 1, 'increment');
+        gameData.updateStat('gamesPlayed', 1, 'increment');
 
         // Title
         this.add.text(width / 2, 20, '⏰ PR Rush Hour', {
@@ -380,13 +396,20 @@ export default class PRRushScene extends Phaser.Scene {
             this.reputation += 5;
             this.showFeedback('✓ Correct!', '#00ff00', this.currentPR.issue);
             this.timeRemaining += 3; // Bonus time
+            this.sounds.playSound('collect');
+            this.particles.sparkle(400, 300, 0x00ff00, 15);
         } else {
             this.reputation -= 15;
             this.showFeedback('✗ Wrong!', '#ff0000', this.currentPR.issue);
             this.timeRemaining -= 2; // Time penalty
+            this.sounds.playSound('error');
+            this.particles.shake(150, 0.008);
         }
 
         this.reputation = Phaser.Math.Clamp(this.reputation, 0, 100);
+
+        // Track stats
+        gameData.updateStat('prRush.prsReviewed', 1, 'increment');
 
         if (this.reputation <= 0) {
             this.endGame('You got fired! 💼');
@@ -482,6 +505,21 @@ export default class PRRushScene extends Phaser.Scene {
         this.gameOver = true;
         this.timer.remove();
 
+        const accuracy = this.prsReviewed > 0
+            ? Math.floor((this.correctDecisions / this.prsReviewed) * 100)
+            : 0;
+
+        // Save stats
+        gameData.updateStat('prRush.bestAccuracy', accuracy, 'max');
+        gameData.updateStat('totalScore', this.prsReviewed * 10, 'increment');
+
+        // Check for perfect review achievement
+        if (accuracy === 100 && this.prsReviewed >= 5) {
+            gameData.unlockAchievement('perfect_review');
+        }
+
+        this.sounds.playGameOver();
+
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
@@ -500,10 +538,6 @@ export default class PRRushScene extends Phaser.Scene {
             color: '#ffffff',
             fontStyle: 'italic'
         }).setOrigin(0.5);
-
-        const accuracy = this.prsReviewed > 0
-            ? Math.floor((this.correctDecisions / this.prsReviewed) * 100)
-            : 0;
 
         this.add.text(width / 2, height / 2 + 20, `PRs Reviewed: ${this.prsReviewed}`, {
             fontSize: '16px',

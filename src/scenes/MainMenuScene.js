@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { gameData } from '../utils/GameData.js';
 
 export default class MainMenuScene extends Phaser.Scene {
     constructor() {
@@ -11,6 +12,9 @@ export default class MainMenuScene extends Phaser.Scene {
 
         // Background
         this.add.rectangle(0, 0, width, height, 0x1a1a2e).setOrigin(0);
+
+        // Difficulty selector
+        this.createDifficultySelector();
 
         // Title
         const title = this.add.text(width / 2, 80, 'GitGame', {
@@ -82,6 +86,75 @@ export default class MainMenuScene extends Phaser.Scene {
             color: '#555555'
         });
         footer.setOrigin(0.5);
+    }
+
+    createDifficultySelector() {
+        const difficulties = ['normal', 'hard', 'nightmare'];
+        const currentDifficulty = gameData.getDifficulty();
+
+        this.add.text(20, 20, 'Difficulty:', {
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        });
+
+        difficulties.forEach((difficulty, index) => {
+            const x = 100 + (index * 100);
+            const y = 20;
+
+            const colors = {
+                normal: 0x00ff00,
+                hard: 0xffaa00,
+                nightmare: 0xff0000
+            };
+
+            const labels = {
+                normal: '😊 Normal',
+                hard: '😅 Hard',
+                nightmare: '💀 Nightmare'
+            };
+
+            const isSelected = difficulty === currentDifficulty;
+
+            const btn = this.add.text(x, y, labels[difficulty], {
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                color: isSelected ? '#ffffff' : '#888888',
+                backgroundColor: isSelected ? '#' + colors[difficulty].toString(16).padStart(6, '0') : '#333333',
+                padding: { x: 8, y: 4 }
+            });
+
+            btn.setInteractive({ useHandCursor: true });
+
+            btn.on('pointerdown', () => {
+                gameData.setDifficulty(difficulty);
+                this.scene.restart(); // Refresh the menu
+            });
+
+            btn.on('pointerover', () => {
+                if (!isSelected) {
+                    btn.setStyle({ backgroundColor: '#555555' });
+                }
+            });
+
+            btn.on('pointerout', () => {
+                if (!isSelected) {
+                    btn.setStyle({ backgroundColor: '#333333' });
+                }
+            });
+        });
+
+        // Stats display
+        const gamesPlayed = gameData.getStat('gamesPlayed');
+        const totalScore = gameData.getStat('totalScore');
+
+        if (gamesPlayed > 0) {
+            this.add.text(20, 45, `Games Played: ${gamesPlayed} | Total Score: ${totalScore}`, {
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                color: '#888888'
+            });
+        }
     }
 
     createGameModeButton(x, y, title, description, sceneName, color) {

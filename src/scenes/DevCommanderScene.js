@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import SoundManager from '../utils/SoundManager.js';
+import ParticleEffects from '../utils/ParticleEffects.js';
+import { gameData } from '../utils/GameData.js';
 
 export default class DevCommanderScene extends Phaser.Scene {
     constructor() {
@@ -16,14 +19,27 @@ export default class DevCommanderScene extends Phaser.Scene {
         this.selectedDev = null;
         this.gameTime = 0;
         this.sprint = 1;
+        this.coffeesBought = 0;
+
+        // Difficulty
+        const difficulty = gameData.getDifficulty();
+        this.difficultyMult = difficulty === 'hard' ? 1.3 : difficulty === 'nightmare' ? 1.6 : 1.0;
     }
 
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
+        // Initialize systems
+        this.sounds = new SoundManager(this);
+        this.particles = new ParticleEffects(this);
+
         // Background
         this.add.rectangle(0, 0, width, height, 0x0a0a1a).setOrigin(0);
+
+        // Track stats
+        gameData.updateStat('devCommander.gamesPlayed', 1, 'increment');
+        gameData.updateStat('gamesPlayed', 1, 'increment');
 
         // Title
         this.add.text(width / 2, 20, '⚔️ Dev Commander', {
@@ -410,6 +426,13 @@ export default class DevCommanderScene extends Phaser.Scene {
 
         this.showFloatingText(dev.x, dev.y, `+$${task.reward}`, '#00ff00');
 
+        // Effects
+        this.sounds.playSound('collect');
+        this.particles.sparkle(dev.x, dev.y, 0x00ff00, 10);
+
+        // Track stats
+        gameData.updateStat('devCommander.tasksCompleted', 1, 'increment');
+
         // Remove task
         const taskIndex = this.tasks.indexOf(task);
         if (taskIndex > -1) {
@@ -424,11 +447,13 @@ export default class DevCommanderScene extends Phaser.Scene {
         const cost = 50;
         if (this.money < cost) {
             this.showFloatingText(400, 530, 'Not enough money!', '#ff0000');
+            this.sounds.playSound('error');
             return;
         }
 
         this.money -= cost;
         this.morale += 20;
+        this.coffeesBought++;
 
         this.developers.forEach(dev => {
             dev.devData.morale = Math.min(100, dev.devData.morale + 20);
@@ -436,6 +461,13 @@ export default class DevCommanderScene extends Phaser.Scene {
         });
 
         this.showFloatingText(400, 480, 'Coffee break! Morale +20', '#00ff00');
+        this.sounds.playSound('upgrade');
+        this.particles.sparkle(400, 300, 0xaa6600, 20);
+
+        // Check achievements
+        if (this.coffeesBought >= 20) {
+            gameData.unlockAchievement('coffee_addict');
+        }
     }
 
     nextSprint() {
@@ -533,6 +565,12 @@ export default class DevCommanderScene extends Phaser.Scene {
     }
 
     gameOver(reason) {
+        // Save stats
+        gameData.updateStat('devCommander.maxSprints', this.sprint, 'max');
+        gameData.updateStat('totalScore', this.completedTasks * 20, 'increment');
+
+        this.sounds.playGameOver();
+
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 

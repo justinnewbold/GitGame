@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import SoundManager from '../utils/SoundManager.js';
+import ParticleEffects from '../utils/ParticleEffects.js';
+import { gameData } from '../utils/GameData.js';
 
 export default class CodeDefenseScene extends Phaser.Scene {
     constructor() {
@@ -14,14 +17,28 @@ export default class CodeDefenseScene extends Phaser.Scene {
         this.path = [];
         this.selectedTowerType = null;
         this.waveInProgress = false;
+        this.towersPlaced = 0;
+        this.enemiesKilled = 0;
+
+        // Difficulty multiplier
+        const difficulty = gameData.getDifficulty();
+        this.difficultyMult = difficulty === 'hard' ? 1.5 : difficulty === 'nightmare' ? 2.0 : 1.0;
     }
 
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
+        // Initialize systems
+        this.sounds = new SoundManager(this);
+        this.particles = new ParticleEffects(this);
+
         // Background
         this.add.rectangle(0, 0, width, height, 0x0a0a1a).setOrigin(0);
+
+        // Track stats
+        gameData.updateStat('codeDefense.gamesPlayed', 1, 'increment');
+        gameData.updateStat('gamesPlayed', 1, 'increment');
 
         // Title
         this.add.text(width / 2, 20, '🏰 Code Defense', {
@@ -254,6 +271,7 @@ export default class CodeDefenseScene extends Phaser.Scene {
 
         this.towers.push(tower);
         this.money -= this.selectedTowerType.cost;
+        this.towersPlaced++;
         this.updateHUD();
 
         this.showFloatingText(x, y - 30, `-$${this.selectedTowerType.cost}`, '#ff0000');
@@ -262,6 +280,15 @@ export default class CodeDefenseScene extends Phaser.Scene {
         this.add.text(x, y, this.selectedTowerType.emoji, {
             fontSize: '16px'
         }).setOrigin(0.5);
+
+        // Effects
+        this.sounds.playSound('place');
+        this.particles.sparkle(x, y, this.selectedTowerType.color, 10);
+
+        // Track stats and achievements
+        gameData.updateStat('codeDefense.towersPlaced', 1, 'increment');
+        const achievements = gameData.checkAchievements();
+        achievements.forEach(ach => this.showAchievement(ach));
     }
 
     createStartWaveButton() {
@@ -423,7 +450,12 @@ export default class CodeDefenseScene extends Phaser.Scene {
             // Remove if dead
             if (data.health <= 0) {
                 this.money += data.reward;
+                this.enemiesKilled++;
                 this.showFloatingText(enemy.x, enemy.y, `+$${data.reward}`, '#00ff00');
+
+                // Effects
+                this.particles.explosion(enemy.x, enemy.y, 0xff00ff, 15);
+                this.sounds.playSound('hit');
 
                 if (enemy.healthBarBg) enemy.healthBarBg.destroy();
                 if (enemy.healthBar) enemy.healthBar.destroy();
@@ -488,6 +520,13 @@ export default class CodeDefenseScene extends Phaser.Scene {
 
         this.waveButton.setFillStyle(0x00ff00, 0.8);
         this.waveButtonText.setText('Start Wave');
+
+        // Effects
+        this.sounds.playSound('wave');
+        this.particles.sparkle(width / 2, 250, 0x00ff00, 30);
+
+        // Track stats
+        gameData.updateStat('codeDefense.highWave', this.wave - 1, 'max');
     }
 
     showFloatingText(x, y, text, color) {
@@ -519,6 +558,10 @@ export default class CodeDefenseScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
+        // Save stats
+        gameData.updateStat('codeDefense.highWave', this.wave - 1, 'max');
+        gameData.updateStat('totalScore', this.wave * 100, 'increment');
+
         const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.8).setOrigin(0);
 
         this.add.text(width / 2, height / 2 - 50, 'PRODUCTION DOWN!', {
@@ -532,7 +575,9 @@ export default class CodeDefenseScene extends Phaser.Scene {
             '💥 The hackers won',
             '🔥 Should have added more tests',
             '💀 Security audit: FAILED',
-            '☠️ Your CI/CD pipeline has left the chat'
+            '☠️ Your CI/CD pipeline has left the chat',
+            '😱 Zero-day exploit detected',
+            '🚨 All your base are belong to us'
         ];
 
         this.add.text(width / 2, height / 2, Phaser.Utils.Array.GetRandom(messages), {
@@ -542,10 +587,17 @@ export default class CodeDefenseScene extends Phaser.Scene {
             fontStyle: 'italic'
         }).setOrigin(0.5);
 
-        this.add.text(width / 2, height / 2 + 40, `Survived ${this.wave - 1} waves`, {
-            fontSize: '20px',
+        this.add.text(width / 2, height / 2 + 40, `Survived ${this.wave - 1} waves | Towers: ${this.towersPlaced}`, {
+            fontSize: '18px',
             fontFamily: 'monospace',
             color: '#00ff00'
+        }).setOrigin(0.5);
+
+        const highWave = gameData.getStat('codeDefense.highWave');
+        this.add.text(width / 2, height / 2 + 65, `Best: Wave ${highWave}`, {
+            fontSize: '14px',
+            fontFamily: 'monospace',
+            color: '#ffaa00'
         }).setOrigin(0.5);
 
         const restartBtn = this.add.text(width / 2, height / 2 + 100, '[ Return to Menu ]', {
@@ -557,6 +609,43 @@ export default class CodeDefenseScene extends Phaser.Scene {
         restartBtn.on('pointerdown', () => this.scene.start('MainMenuScene'));
 
         this.physics.pause();
+        this.sounds.playGameOver();
+    }
+
+    showAchievement(achievement) {
+        if (!achievement) return;
+
+        const width = this.cameras.main.width;
+        const achievementBox = this.add.rectangle(width - 150, 100, 280, 60, 0x000000, 0.9);
+        achievementBox.setStrokeStyle(2, 0xffaa00);
+
+        const achievementText = this.add.text(width - 150, 90, `🏆 Achievement!`, {
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            color: '#ffaa00',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        const achievementName = this.add.text(width - 150, 110, `${achievement.icon} ${achievement.name}`, {
+            fontSize: '14px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+
+        this.sounds.playSound('upgrade');
+
+        this.time.delayedCall(3000, () => {
+            this.tweens.add({
+                targets: [achievementBox, achievementText, achievementName],
+                alpha: 0,
+                duration: 500,
+                onComplete: () => {
+                    achievementBox.destroy();
+                    achievementText.destroy();
+                    achievementName.destroy();
+                }
+            });
+        });
     }
 
     showInstructions() {

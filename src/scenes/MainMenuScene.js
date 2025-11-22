@@ -137,6 +137,9 @@ export default class MainMenuScene extends Phaser.Scene {
             settingsBtn.setStyle({ backgroundColor: '#333333' });
         });
 
+        // Meta-progression feature buttons (right side)
+        this.createFeatureButtons();
+
         // Footer
         const footer = this.add.text(width / 2, height - 20,
             'Made with ❤️ and lots of git conflicts', {
@@ -145,6 +148,73 @@ export default class MainMenuScene extends Phaser.Scene {
             color: '#555555'
         });
         footer.setOrigin(0.5);
+    }
+
+    createFeatureButtons() {
+        const width = this.cameras.main.width;
+        const startY = 200;
+        const spacing = 65;
+
+        // Section title
+        this.add.text(width - 180, startY - 30, 'FEATURES', {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#00ff00',
+            fontStyle: 'bold'
+        });
+
+        // Battle Pass
+        this.createFeatureButton(width - 180, startY, '🎖️ Battle Pass', 'BattlePassScene', 0x9370DB);
+
+        // Ranked Mode
+        this.createFeatureButton(width - 180, startY + spacing, '🏆 Ranked', 'RankedScene', 0xFFD700);
+
+        // Profile
+        this.createFeatureButton(width - 180, startY + spacing * 2, '👤 Profile', 'ProfileScene', 0x4169E1);
+
+        // Clan
+        this.createFeatureButton(width - 180, startY + spacing * 3, '⚔️ Clan', 'ClanScene', 0xE74C3C);
+
+        // Campaign
+        this.createFeatureButton(width - 180, startY + spacing * 4, '📖 Campaign', 'CampaignScene', 0x16A085);
+
+        // Daily Challenges
+        this.createFeatureButton(width - 180, startY + spacing * 5, '🎯 Challenges', 'ChallengesScene', 0xF39C12);
+
+        // Loot Crates
+        this.createFeatureButton(width - 180, startY + spacing * 6, '🎁 Crates', 'LootCrateScene', 0x9B59B6);
+
+        // Friends
+        this.createFeatureButton(width - 180, startY + spacing * 7, '👥 Friends', 'FriendsScene', 0x3498DB);
+    }
+
+    createFeatureButton(x, y, text, sceneName, color) {
+        const btn = this.add.text(x, y, text, {
+            fontSize: '14px',
+            fontFamily: 'monospace',
+            color: '#ffffff',
+            backgroundColor: '#' + color.toString(16).padStart(6, '0'),
+            padding: { x: 12, y: 8 }
+        });
+        btn.setOrigin(0, 0.5);
+        btn.setInteractive({ useHandCursor: true });
+
+        btn.on('pointerdown', () => {
+            this.cameras.main.fade(250, 0, 0, 0);
+            this.time.delayedCall(250, () => {
+                this.scene.start(sceneName);
+            });
+        });
+
+        btn.on('pointerover', () => {
+            btn.setScale(1.05);
+        });
+
+        btn.on('pointerout', () => {
+            btn.setScale(1.0);
+        });
+
+        return btn;
     }
 
     createDifficultySelector() {

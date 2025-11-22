@@ -14,6 +14,16 @@ import BossRushScene from './scenes/BossRushScene.js';
 import SettingsScene from './scenes/SettingsScene.js';
 import StatsScene from './scenes/StatsScene.js';
 
+// New UI scenes
+import BattlePassScene from './scenes/BattlePassScene.js';
+import ProfileScene from './scenes/ProfileScene.js';
+import RankedScene from './scenes/RankedScene.js';
+import ClanScene from './scenes/ClanScene.js';
+import ChallengesScene from './scenes/ChallengesScene.js';
+import LootCrateScene from './scenes/LootCrateScene.js';
+import FriendsScene from './scenes/FriendsScene.js';
+import CampaignScene from './scenes/CampaignScene.js';
+
 // Game configuration
 const config = {
     type: Phaser.AUTO,
@@ -37,6 +47,7 @@ const config = {
         MainMenuScene,
         SettingsScene,
         StatsScene,
+        // Game modes
         GitSurvivorScene,
         CodeDefenseScene,
         PRRushScene,
@@ -46,7 +57,16 @@ const config = {
         SprintSurvivorScene,
         BugBountyScene,
         LegacyExcavatorScene,
-        BossRushScene
+        BossRushScene,
+        // Feature UI scenes
+        BattlePassScene,
+        ProfileScene,
+        RankedScene,
+        ClanScene,
+        ChallengesScene,
+        LootCrateScene,
+        FriendsScene,
+        CampaignScene
     ]
 };
 

@@ -20,11 +20,57 @@ export default class GameDataManager {
         this.settings = new SettingsManager();
         this.progression = new ProgressionManager();
 
+        // Create backward-compatible 'data' property using a Proxy
+        this._createDataProxy();
+
         // Load saved data
         this.load();
 
         // Set up auto-save
         this.storage.startAutoSave(() => this.save());
+    }
+
+    /**
+     * Create a backward-compatible 'data' property that proxies to new managers
+     * This ensures old code like `gameData.data.settings` still works
+     */
+    _createDataProxy() {
+        const self = this;
+        this.data = new Proxy({}, {
+            get(target, prop) {
+                // Route old property access to new managers
+                switch (prop) {
+                    case 'stats':
+                        return self.stats.getAll();
+                    case 'achievements':
+                        return self.achievements.export();
+                    case 'settings':
+                        return self.settings.export();
+                    case 'battlePass':
+                    case 'unlockedContent':
+                        // Initialize battlePass structure if needed
+                        if (prop === 'battlePass' && !target._battlePass) {
+                            target._battlePass = {
+                                season: self.progression.progression.battlePass?.currentSeason || 1,
+                                tier: self.progression.progression.battlePass?.currentTier || 0,
+                                xp: 0,
+                                isPremium: self.progression.progression.battlePass?.ownsPremium || false,
+                                claimedRewards: [],
+                                completedMissions: [],
+                                seasonStartDate: new Date().toISOString()
+                            };
+                        }
+                        return target._battlePass || target[prop];
+                    default:
+                        return target[prop];
+                }
+            },
+            set(target, prop, value) {
+                // Allow setting for backward compatibility
+                target[prop] = value;
+                return true;
+            }
+        });
     }
 
     /**
@@ -41,6 +87,14 @@ export default class GameDataManager {
                 this.settings.load(data.settings);
                 this.progression.load(data.progression);
 
+                // Restore battlePass proxy data
+                if (data.battlePass) {
+                    this.data._battlePass = data.battlePass;
+                }
+                if (data.unlockedContent) {
+                    this.data.unlockedContent = data.unlockedContent;
+                }
+
                 console.log('GameDataManager: Data loaded successfully');
             } else {
                 console.log('GameDataManager: No saved data found, using defaults');
@@ -56,11 +110,23 @@ export default class GameDataManager {
      */
     save() {
         try {
+            // Sync any battlePass changes from proxy back to progression
+            if (this.data._battlePass) {
+                this.progression.progression.battlePass = {
+                    currentSeason: this.data._battlePass.season,
+                    currentTier: this.data._battlePass.tier,
+                    ownsPremium: this.data._battlePass.isPremium
+                };
+            }
+
             const data = {
                 stats: this.stats.export(),
                 achievements: this.achievements.export(),
                 settings: this.settings.export(),
-                progression: this.progression.export()
+                progression: this.progression.export(),
+                // Include proxy data for backward compatibility
+                battlePass: this.data._battlePass,
+                unlockedContent: this.data.unlockedContent
             };
 
             const success = this.storage.save(data);

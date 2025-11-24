@@ -1,37 +1,32 @@
-import Phaser from 'phaser';
-import { gameData } from '../utils/GameData.js';
+/**
+ * MainMenuScene - Main menu with game mode selection
+ * Refactored to use new architecture (UIFactory, Constants, BaseScene)
+ */
 
-export default class MainMenuScene extends Phaser.Scene {
+import BaseScene from '../core/BaseScene.js';
+import { SCENE_NAMES, COLORS, UI_STYLES } from '../constants/GameConstants.js';
+
+export default class MainMenuScene extends BaseScene {
     constructor() {
-        super({ key: 'MainMenuScene' });
+        super({ key: SCENE_NAMES.MAIN_MENU });
     }
 
     create() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-
-        // Background
-        this.add.rectangle(0, 0, width, height, 0x1a1a2e).setOrigin(0);
+        // Call base create for common setup
+        super.baseCreate();
 
         // Difficulty selector
         this.createDifficultySelector();
 
         // Title
-        const title = this.add.text(width / 2, 80, 'GitGame', {
-            fontSize: '64px',
-            fontFamily: 'monospace',
-            color: '#00ff00',
-            fontStyle: 'bold'
-        });
-        title.setOrigin(0.5);
+        this.ui.createTitle(this.width / 2, 80, 'GitGame');
 
-        // Subtitle with humor
-        const subtitle = this.add.text(width / 2, 130, '⚠️ Only the Best Devs Survive! ⚠️', {
-            fontSize: '16px',
-            fontFamily: 'monospace',
+        // Subtitle
+        this.add.text(this.width / 2, 130, '⚠️ Only the Best Devs Survive! ⚠️', {
+            fontSize: UI_STYLES.FONT.SIZE.MEDIUM,
+            fontFamily: UI_STYLES.FONT.FAMILY,
             color: '#ffaa00'
-        });
-        subtitle.setOrigin(0.5);
+        }).setOrigin(0.5);
 
         // Funny quote
         const quotes = [
@@ -42,239 +37,174 @@ export default class MainMenuScene extends Phaser.Scene {
             '"Who needs tests anyway?" - Natural Selection'
         ];
         const randomQuote = Phaser.Utils.Array.GetRandom(quotes);
-        const quote = this.add.text(width / 2, 160, randomQuote, {
-            fontSize: '12px',
-            fontFamily: 'monospace',
+        this.add.text(this.width / 2, 160, randomQuote, {
+            fontSize: UI_STYLES.FONT.SIZE.SMALL,
+            fontFamily: UI_STYLES.FONT.FAMILY,
             color: '#888888',
             fontStyle: 'italic'
-        });
-        quote.setOrigin(0.5);
+        }).setOrigin(0.5);
 
         // Game mode buttons
         const buttonY = 220;
         const buttonSpacing = 80;
 
-        this.createGameModeButton(width / 2, buttonY,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY,
             '🗡️ Git Survivor',
             'Roguelike: Face merge conflicts & bugs!',
-            'GitSurvivorScene',
-            0x4a90e2);
+            SCENE_NAMES.GIT_SURVIVOR,
+            COLORS.GIT_SURVIVOR
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing,
             '🏰 Code Defense',
             'Tower Defense: Protect your codebase!',
-            'CodeDefenseScene',
-            0xe24a4a);
+            SCENE_NAMES.CODE_DEFENSE,
+            COLORS.CODE_DEFENSE
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 2,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing * 2,
             '⏰ PR Rush',
             'Time Management: Review PRs under pressure!',
-            'PRRushScene',
-            0xe2a94a);
+            SCENE_NAMES.PR_RUSH,
+            COLORS.PR_RUSH
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 3,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing * 3,
             '⚔️ Dev Commander',
             'RTS: Manage your dev team!',
-            'DevCommanderScene',
-            0x7e4ae2);
+            SCENE_NAMES.DEV_COMMANDER,
+            COLORS.DEV_COMMANDER
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 4,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing * 4,
             '🏰 Debug Dungeon',
             'Dungeon Crawler: Clear rooms of bugs!',
-            'DebugDungeonScene',
-            0x9b59b6);
+            SCENE_NAMES.DEBUG_DUNGEON,
+            COLORS.DEBUG_DUNGEON
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 5,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing * 5,
             '🏎️ Refactor Race',
             'Time Trial: Refactor code at speed!',
-            'RefactorRaceScene',
-            0x16a085);
+            SCENE_NAMES.REFACTOR_RACE,
+            COLORS.REFACTOR_RACE
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 6,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing * 6,
             '🏃 Sprint Survivor',
             'Endless Runner: Dodge to survive!',
-            'SprintSurvivorScene',
-            0x3498db);
+            SCENE_NAMES.SPRINT_SURVIVOR,
+            COLORS.SPRINT_SURVIVOR
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 7,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing * 7,
             '🐛 Bug Bounty',
             'Puzzle: Fix bugs with limited moves!',
-            'BugBountyScene',
-            0xe74c3c);
+            SCENE_NAMES.BUG_BOUNTY,
+            COLORS.BUG_BOUNTY
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 8,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing * 8,
             '⛏️ Legacy Excavator',
             'Mining: Dig for code artifacts!',
-            'LegacyExcavatorScene',
-            0xf39c12);
+            SCENE_NAMES.LEGACY_EXCAVATOR,
+            COLORS.LEGACY_EXCAVATOR
+        );
 
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 9,
+        this.ui.createGameModeButton(
+            this.width / 2, buttonY + buttonSpacing * 9,
             '👹 Boss Rush',
             'Challenge: Fight all bosses!',
-            'BossRushScene',
-            0xc0392b);
+            SCENE_NAMES.BOSS_RUSH,
+            COLORS.BOSS_RUSH
+        );
 
         // Settings button
-        const settingsBtn = this.add.text(width - 20, 20, '⚙️ Settings', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            backgroundColor: '#333333',
-            padding: { x: 10, y: 5 }
-        });
-        settingsBtn.setOrigin(1, 0);
-        settingsBtn.setInteractive({ useHandCursor: true });
+        this.ui.createButton(
+            this.width - 20, 20,
+            '⚙️ Settings',
+            () => this.transitionTo(SCENE_NAMES.SETTINGS),
+            { originX: 1, originY: 0 }
+        );
 
-        settingsBtn.on('pointerdown', () => {
-            this.scene.start('SettingsScene');
-        });
-
-        settingsBtn.on('pointerover', () => {
-            settingsBtn.setStyle({ backgroundColor: '#555555' });
-        });
-
-        settingsBtn.on('pointerout', () => {
-            settingsBtn.setStyle({ backgroundColor: '#333333' });
-        });
+        // Feature buttons (right side)
+        this.createFeatureButtons();
 
         // Footer
-        const footer = this.add.text(width / 2, height - 20,
+        this.add.text(this.width / 2, this.height - 20,
             'Made with ❤️ and lots of git conflicts', {
-            fontSize: '10px',
-            fontFamily: 'monospace',
+            fontSize: UI_STYLES.FONT.SIZE.TINY,
+            fontFamily: UI_STYLES.FONT.FAMILY,
             color: '#555555'
-        });
-        footer.setOrigin(0.5);
+        }).setOrigin(0.5);
+    }
+
+    createFeatureButtons() {
+        const startY = 200;
+        const spacing = 65;
+
+        // Section title
+        this.ui.createSectionHeader(this.width - 180, startY - 30, 'FEATURES');
+
+        // Feature buttons with UIFactory
+        this.ui.createFeatureButton(this.width - 180, startY, '🎖️ Battle Pass', SCENE_NAMES.BATTLE_PASS, COLORS.BATTLE_PASS);
+        this.ui.createFeatureButton(this.width - 180, startY + spacing, '🏆 Ranked', SCENE_NAMES.RANKED, COLORS.RANKED);
+        this.ui.createFeatureButton(this.width - 180, startY + spacing * 2, '👤 Profile', SCENE_NAMES.PROFILE, COLORS.PROFILE);
+        this.ui.createFeatureButton(this.width - 180, startY + spacing * 3, '⚔️ Clan', SCENE_NAMES.CLAN, COLORS.CLAN);
+        this.ui.createFeatureButton(this.width - 180, startY + spacing * 4, '📖 Campaign', SCENE_NAMES.CAMPAIGN, COLORS.CAMPAIGN);
+        this.ui.createFeatureButton(this.width - 180, startY + spacing * 5, '🎯 Challenges', SCENE_NAMES.CHALLENGES, COLORS.CHALLENGES);
+        this.ui.createFeatureButton(this.width - 180, startY + spacing * 6, '🎁 Crates', SCENE_NAMES.LOOT_CRATE, COLORS.LOOT_CRATE);
+        this.ui.createFeatureButton(this.width - 180, startY + spacing * 7, '👥 Friends', SCENE_NAMES.FRIENDS, COLORS.FRIENDS);
     }
 
     createDifficultySelector() {
-        const difficulties = ['normal', 'hard', 'nightmare'];
+        const gameData = this.getGameData();
         const currentDifficulty = gameData.getDifficulty();
 
-        this.add.text(20, 20, 'Difficulty:', {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: '#ffffff'
-        });
+        this.ui.createLabel(20, 20, 'Difficulty:');
+
+        const difficulties = ['normal', 'hard', 'nightmare'];
+        const colors = { normal: COLORS.SUCCESS, hard: COLORS.WARNING, nightmare: COLORS.DANGER };
+        const labels = { normal: '😊 Normal', hard: '😅 Hard', nightmare: '💀 Nightmare' };
 
         difficulties.forEach((difficulty, index) => {
             const x = 100 + (index * 100);
             const y = 20;
-
-            const colors = {
-                normal: 0x00ff00,
-                hard: 0xffaa00,
-                nightmare: 0xff0000
-            };
-
-            const labels = {
-                normal: '😊 Normal',
-                hard: '😅 Hard',
-                nightmare: '💀 Nightmare'
-            };
-
             const isSelected = difficulty === currentDifficulty;
 
-            const btn = this.add.text(x, y, labels[difficulty], {
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                color: isSelected ? '#ffffff' : '#888888',
-                backgroundColor: isSelected ? '#' + colors[difficulty].toString(16).padStart(6, '0') : '#333333',
-                padding: { x: 8, y: 4 }
-            });
-
-            btn.setInteractive({ useHandCursor: true });
-
-            btn.on('pointerdown', () => {
-                gameData.setDifficulty(difficulty);
-                this.scene.restart(); // Refresh the menu
-            });
-
-            btn.on('pointerover', () => {
-                if (!isSelected) {
-                    btn.setStyle({ backgroundColor: '#555555' });
+            const btn = this.ui.createButton(
+                x, y, labels[difficulty],
+                () => {
+                    gameData.setDifficulty(difficulty);
+                    this.scene.restart(); // Refresh the menu
+                },
+                {
+                    fontSize: UI_STYLES.FONT.SIZE.SMALL,
+                    color: isSelected ? '#ffffff' : '#888888',
+                    backgroundColor: isSelected ? '#' + colors[difficulty].toString(16).padStart(6, '0') : '#333333'
                 }
-            });
-
-            btn.on('pointerout', () => {
-                if (!isSelected) {
-                    btn.setStyle({ backgroundColor: '#333333' });
-                }
-            });
+            );
         });
 
         // Stats display
-        const gamesPlayed = gameData.getStat('gamesPlayed');
-        const totalScore = gameData.getStat('totalScore');
+        const gamesPlayed = gameData.getStat('gamesPlayed') || 0;
+        const totalScore = gameData.getStat('totalScore') || 0;
 
         if (gamesPlayed > 0) {
             this.add.text(20, 45, `Games Played: ${gamesPlayed} | Total Score: ${totalScore}`, {
-                fontSize: '10px',
-                fontFamily: 'monospace',
+                fontSize: UI_STYLES.FONT.SIZE.TINY,
+                fontFamily: UI_STYLES.FONT.FAMILY,
                 color: '#888888'
             });
         }
-    }
-
-    createGameModeButton(x, y, title, description, sceneName, color) {
-        // Button background
-        const buttonWidth = 600;
-        const buttonHeight = 60;
-
-        const button = this.add.rectangle(x, y, buttonWidth, buttonHeight, color, 0.8);
-        button.setStrokeStyle(2, 0xffffff);
-        button.setInteractive({ useHandCursor: true });
-
-        // Title text
-        const titleText = this.add.text(x, y - 12, title, {
-            fontSize: '20px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        });
-        titleText.setOrigin(0.5);
-
-        // Description text
-        const descText = this.add.text(x, y + 12, description, {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: '#dddddd'
-        });
-        descText.setOrigin(0.5);
-
-        // Hover effects
-        button.on('pointerover', () => {
-            button.setFillStyle(color, 1.0);
-            button.setScale(1.05);
-            titleText.setScale(1.05);
-            descText.setScale(1.05);
-        });
-
-        button.on('pointerout', () => {
-            button.setFillStyle(color, 0.8);
-            button.setScale(1.0);
-            titleText.setScale(1.0);
-            descText.setScale(1.0);
-        });
-
-        button.on('pointerdown', () => {
-            button.setScale(0.95);
-            titleText.setScale(0.95);
-            descText.setScale(0.95);
-        });
-
-        button.on('pointerup', () => {
-            button.setScale(1.0);
-            titleText.setScale(1.0);
-            descText.setScale(1.0);
-
-            // Transition to the selected game mode
-            this.cameras.main.fade(250, 0, 0, 0);
-            this.time.delayedCall(250, () => {
-                this.scene.start(sceneName);
-            });
-        });
-
-        return button;
     }
 }

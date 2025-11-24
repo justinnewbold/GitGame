@@ -1,8 +1,18 @@
+/**
+ * BootScene - Initial loading scene
+ * Loads assets and initializes Phaser-dependent services
+ */
+
 import Phaser from 'phaser';
+import ServiceLocator from '../core/ServiceLocator.js';
+import SoundManager from '../utils/SoundManager.js';
+import MusicManager from '../utils/MusicManager.js';
+import ParticleEffects from '../utils/ParticleEffects.js';
+import { SCENE_NAMES } from '../constants/GameConstants.js';
 
 export default class BootScene extends Phaser.Scene {
     constructor() {
-        super({ key: 'BootScene' });
+        super({ key: SCENE_NAMES.BOOT });
     }
 
     preload() {
@@ -68,15 +78,31 @@ export default class BootScene extends Phaser.Scene {
             assetText.destroy();
         });
 
-        // Here we would load actual assets
-        // For now, just simulate loading
+        // Load assets (placeholder - will be updated in future)
         this.load.image('logo', 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwZmYwMCIvPjwvc3ZnPg==');
     }
 
     create() {
+        console.log('🔧 BootScene: Registering Phaser-dependent services...');
+
+        try {
+            // Initialize and register services that need a Phaser scene
+            const soundManager = new SoundManager(this);
+            const musicManager = new MusicManager(this);
+            const particleEffects = new ParticleEffects(this);
+
+            ServiceLocator.register('soundManager', soundManager);
+            ServiceLocator.register('musicManager', musicManager);
+            ServiceLocator.register('particleEffects', particleEffects);
+
+            console.log('✅ BootScene: Services registered successfully');
+        } catch (error) {
+            console.error('❌ BootScene: Failed to register services:', error);
+        }
+
         // Move to main menu after a short delay
         this.time.delayedCall(500, () => {
-            this.scene.start('MainMenuScene');
+            this.scene.start(SCENE_NAMES.MAIN_MENU);
         });
     }
 }

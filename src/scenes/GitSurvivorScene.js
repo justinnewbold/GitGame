@@ -237,7 +237,7 @@ export default class GitSurvivorScene extends Phaser.Scene {
         const enemy = this.add.circle(ex, ey, 12, type.color);
         this.physics.add.existing(enemy);
 
-        enemy.data = {
+        enemy.enemyData = {
             name: type.name,
             health: type.health,
             maxHealth: type.health,
@@ -359,12 +359,12 @@ export default class GitSurvivorScene extends Phaser.Scene {
             );
 
             enemy.body.setVelocity(
-                Math.cos(angle) * enemy.data.speed,
-                Math.sin(angle) * enemy.data.speed
+                Math.cos(angle) * enemy.enemyData.speed,
+                Math.sin(angle) * enemy.enemyData.speed
             );
 
             // Remove dead enemies
-            if (enemy.data.health <= 0) {
+            if (enemy.enemyData.health <= 0) {
                 this.enemyKilled(enemy, index);
             }
         });
@@ -406,7 +406,7 @@ export default class GitSurvivorScene extends Phaser.Scene {
                 );
 
                 if (dist < 17) {
-                    enemy.data.health -= projectile.damage;
+                    enemy.enemyData.health -= projectile.damage;
 
                     // Hit flash
                     this.tweens.add({

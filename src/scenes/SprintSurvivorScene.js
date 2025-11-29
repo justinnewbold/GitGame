@@ -1,439 +1,524 @@
-// Sprint Survivor - Infinite endless runner game mode
-
 import Phaser from 'phaser';
+import { COLORS } from '../main.js';
 import { gameData } from '../utils/GameData.js';
-import SoundManager from '../utils/SoundManager.js';
-import ParticleEffects from '../utils/ParticleEffects.js';
-import ComboSystem from '../utils/ComboSystem.js';
 
 export default class SprintSurvivorScene extends Phaser.Scene {
     constructor() {
         super({ key: 'SprintSurvivorScene' });
     }
 
-    create() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-
-        // Game state
-        this.gameOver = false;
+    init() {
         this.score = 0;
         this.distance = 0;
-        this.speed = 300;
-        this.maxSpeed = 800;
-        this.speedIncrement = 0.5;
+        this.speed = 200;
+        this.maxSpeed = 500;
+        this.lanes = [97, 195, 293]; // 3 lanes
+        this.currentLane = 1;
         this.obstacles = [];
-        this.powerups = [];
-        this.lanes = [200, 300, 400]; // 3 lanes
-        this.currentLane = 1; // Middle lane
+        this.collectibles = [];
+        this.isGameOver = false;
+        this.isJumping = false;
+    }
 
-        // Systems
-        this.sounds = new SoundManager();
-        this.particles = new ParticleEffects(this);
-        this.combo = new ComboSystem(this);
+    create() {
+        const { width, height } = this.cameras.main;
 
-        // Background
-        this.add.rectangle(0, 0, width, height, 0x0a0a1a).setOrigin(0);
-        this.createScrollingBackground();
+        this.cameras.main.fadeIn(300, 10, 10, 11);
 
-        // Player
-        this.createPlayer();
-
-        // HUD
-        this.createHUD();
-
-        // Controls
-        this.createControls();
+        // Create game elements
+        this.createHUD(width);
+        this.createTrack(width, height);
+        this.createPlayer(height);
+        this.createControls(width, height);
 
         // Start spawning
         this.startSpawning();
+
+        // Track game start
+        gameData.incrementGamesPlayed();
     }
 
-    createScrollingBackground() {
-        // Create road lines
-        this.roadLines = [];
-        for (let i = 0; i < 10; i++) {
-            const line = this.add.rectangle(400, i * 80, 4, 40, 0xffffff, 0.5);
-            this.roadLines.push(line);
-        }
-    }
+    createHUD(width) {
+        // Back button
+        const backBtn = this.add.container(24, 50);
+        const backBg = this.add.circle(0, 0, 20, COLORS.surface);
+        const backIcon = this.add.text(0, 0, '\u2190', {
+            fontSize: '20px',
+            color: '#71717a'
+        }).setOrigin(0.5);
 
-    createPlayer() {
-        this.player = this.add.circle(this.lanes[this.currentLane], 450, 20, 0x00aaff);
-        this.physics.add.existing(this.player);
-        this.player.body.setCollideWorldBounds(true);
+        backBtn.add([backBg, backIcon]);
+        backBg.setInteractive({ useHandCursor: true });
+        backBg.on('pointerdown', () => this.exitGame());
 
-        this.playerIcon = this.add.text(this.lanes[this.currentLane], 450, '🏃', {
-            fontSize: '32px'
+        // Title
+        this.add.text(width / 2, 50, 'Sprint', {
+            fontSize: '20px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Distance
+        this.distanceText = this.add.text(width - 24, 50, '0m', {
+            fontSize: '14px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a'
+        }).setOrigin(1, 0.5);
+
+        // Score
+        this.scoreText = this.add.text(width / 2, 85, '0', {
+            fontSize: '32px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Speed indicator
+        this.speedText = this.add.text(width / 2, 110, 'Speed: 200', {
+            fontSize: '12px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a'
         }).setOrigin(0.5);
     }
 
-    createControls() {
-        this.cursors = this.input.keyboard.createCursorKeys();
-        this.wasd = {
-            left: this.input.keyboard.addKey('A'),
-            right: this.input.keyboard.addKey('D'),
-            up: this.input.keyboard.addKey('W')
-        };
+    createTrack(width, height) {
+        // Track background
+        const trackX = 24;
+        const trackWidth = width - 48;
+        const trackHeight = height - 200;
+        const trackY = 140;
 
-        // Lane switching
+        this.trackBounds = { x: trackX, y: trackY, width: trackWidth, height: trackHeight };
+
+        // Track border
+        this.add.rectangle(
+            trackX + trackWidth / 2,
+            trackY + trackHeight / 2,
+            trackWidth,
+            trackHeight,
+            COLORS.surface,
+            0.3
+        ).setStrokeStyle(1, COLORS.surfaceLight);
+
+        // Lane dividers
+        this.laneDividers = [];
+        for (let i = 1; i <= 2; i++) {
+            const laneX = trackX + (trackWidth / 3) * i;
+            for (let j = 0; j < 15; j++) {
+                const dash = this.add.rectangle(
+                    laneX,
+                    trackY + j * 50,
+                    2,
+                    25,
+                    COLORS.surfaceLight,
+                    0.3
+                );
+                this.laneDividers.push(dash);
+            }
+        }
+    }
+
+    createPlayer(height) {
+        const playerY = height - 180;
+
+        // Player
+        this.player = this.add.circle(this.lanes[this.currentLane], playerY, 18, COLORS.success);
+
+        // Player indicator
+        this.playerIndicator = this.add.triangle(
+            this.lanes[this.currentLane],
+            playerY - 25,
+            0, 10,
+            -8, -5,
+            8, -5,
+            COLORS.success
+        );
+    }
+
+    createControls(width, height) {
+        // Swipe detection
+        this.swipeStartX = 0;
+        this.swipeStartY = 0;
+
+        this.input.on('pointerdown', (pointer) => {
+            this.swipeStartX = pointer.x;
+            this.swipeStartY = pointer.y;
+        });
+
+        this.input.on('pointerup', (pointer) => {
+            const dx = pointer.x - this.swipeStartX;
+            const dy = pointer.y - this.swipeStartY;
+            const swipeThreshold = 30;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Horizontal swipe
+                if (dx > swipeThreshold) {
+                    this.switchLane(1); // Right
+                } else if (dx < -swipeThreshold) {
+                    this.switchLane(-1); // Left
+                }
+            } else {
+                // Vertical swipe - jump
+                if (dy < -swipeThreshold) {
+                    this.jump();
+                }
+            }
+        });
+
+        // Tap zones for lane switching
+        const leftZone = this.add.rectangle(width / 3, height / 2, width / 3, height, 0x000000, 0);
+        leftZone.setInteractive();
+        leftZone.on('pointerdown', () => this.switchLane(-1));
+
+        const rightZone = this.add.rectangle(width * 2 / 3, height / 2, width / 3, height, 0x000000, 0);
+        rightZone.setInteractive();
+        rightZone.on('pointerdown', () => this.switchLane(1));
+
+        // Keyboard controls
         this.input.keyboard.on('keydown-LEFT', () => this.switchLane(-1));
         this.input.keyboard.on('keydown-RIGHT', () => this.switchLane(1));
         this.input.keyboard.on('keydown-A', () => this.switchLane(-1));
         this.input.keyboard.on('keydown-D', () => this.switchLane(1));
         this.input.keyboard.on('keydown-SPACE', () => this.jump());
+        this.input.keyboard.on('keydown-UP', () => this.jump());
         this.input.keyboard.on('keydown-W', () => this.jump());
+
+        // Instructions
+        this.add.text(width / 2, height - 50, 'Swipe or tap sides to move · Swipe up to jump', {
+            fontSize: '11px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#52525b'
+        }).setOrigin(0.5);
     }
 
     switchLane(direction) {
-        if (this.gameOver) return;
+        if (this.isGameOver) return;
 
-        const newLane = Phaser.Math.Clamp(this.currentLane + direction, 0, this.lanes.length - 1);
+        const newLane = Phaser.Math.Clamp(this.currentLane + direction, 0, 2);
 
         if (newLane !== this.currentLane) {
             this.currentLane = newLane;
-            this.sounds.playSound('shoot');
 
             // Smooth transition
             this.tweens.add({
-                targets: [this.player, this.playerIcon],
+                targets: [this.player, this.playerIndicator],
                 x: this.lanes[this.currentLane],
-                duration: 150,
+                duration: 100,
                 ease: 'Quad.easeOut'
             });
         }
     }
 
     jump() {
-        if (this.gameOver || this.isJumping) return;
+        if (this.isGameOver || this.isJumping) return;
 
         this.isJumping = true;
-        this.sounds.playSound('collect');
 
         // Jump animation
-        const originalY = this.player.y;
         this.tweens.add({
-            targets: [this.player, this.playerIcon],
-            y: originalY - 100,
-            duration: 300,
+            targets: [this.player, this.playerIndicator],
+            y: '-=80',
+            duration: 200,
             yoyo: true,
             ease: 'Quad.easeOut',
             onComplete: () => {
                 this.isJumping = false;
             }
         });
+
+        // Scale effect
+        this.tweens.add({
+            targets: this.player,
+            scale: 1.2,
+            duration: 100,
+            yoyo: true
+        });
     }
 
     startSpawning() {
-        // Spawn obstacles
+        // Obstacles
         this.obstacleTimer = this.time.addEvent({
-            delay: 1500,
+            delay: 1200,
             callback: () => this.spawnObstacle(),
             loop: true
         });
 
-        // Spawn power-ups
-        this.powerupTimer = this.time.addEvent({
-            delay: 3000,
-            callback: () => this.spawnPowerup(),
+        // Collectibles
+        this.collectibleTimer = this.time.addEvent({
+            delay: 2000,
+            callback: () => this.spawnCollectible(),
             loop: true
         });
     }
 
     spawnObstacle() {
-        if (this.gameOver) return;
+        if (this.isGameOver) return;
 
+        const lane = Phaser.Math.Between(0, 2);
         const types = [
-            { emoji: '🐛', name: 'Bug', color: 0xff0000, points: -10 },
-            { emoji: '⚠️', name: 'Warning', color: 0xffaa00, points: -15 },
-            { emoji: '❌', name: 'Error', color: 0xff0000, points: -20 },
-            { emoji: '🔥', name: 'Fire', color: 0xff6600, points: -25 },
-            { emoji: '💣', name: 'Bomb', color: 0x000000, points: -50 }
+            { color: COLORS.error, size: 15 },
+            { color: COLORS.warning, size: 12 },
+            { color: 0x9333ea, size: 18 }
         ];
 
         const type = Phaser.Utils.Array.GetRandom(types);
-        const lane = Phaser.Utils.Array.GetRandom(this.lanes);
 
-        const obstacle = this.add.circle(lane, -50, 25, type.color);
-        this.physics.add.existing(obstacle);
+        const obstacle = this.add.circle(
+            this.lanes[lane],
+            this.trackBounds.y - 20,
+            type.size,
+            type.color
+        );
 
-        obstacle.icon = this.add.text(lane, -50, type.emoji, {
-            fontSize: '40px'
-        }).setOrigin(0.5);
-
-        obstacle.obstacleData = {
-            type: type,
-            lane: lane
-        };
-
+        obstacle.lane = lane;
+        obstacle.isObstacle = true;
         this.obstacles.push(obstacle);
     }
 
-    spawnPowerup() {
-        if (this.gameOver) return;
+    spawnCollectible() {
+        if (this.isGameOver) return;
 
-        const types = [
-            { emoji: '☕', name: 'Coffee', color: 0xaa6600, points: 50 },
-            { emoji: '⭐', name: 'Star', color: 0xffff00, points: 100 },
-            { emoji: '💎', name: 'Diamond', color: 0x00ffff, points: 200 },
-            { emoji: '🔋', name: 'Battery', color: 0x00ff00, points: 75 }
-        ];
+        const lane = Phaser.Math.Between(0, 2);
 
-        const type = Phaser.Utils.Array.GetRandom(types);
-        const lane = Phaser.Utils.Array.GetRandom(this.lanes);
+        const collectible = this.add.circle(
+            this.lanes[lane],
+            this.trackBounds.y - 20,
+            10,
+            COLORS.primary
+        );
 
-        const powerup = this.add.circle(lane, -50, 20, type.color);
-        this.physics.add.existing(powerup);
+        // Glow effect
+        collectible.glow = this.add.circle(
+            this.lanes[lane],
+            this.trackBounds.y - 20,
+            14,
+            COLORS.primary,
+            0.3
+        );
 
-        powerup.icon = this.add.text(lane, -50, type.emoji, {
-            fontSize: '32px'
-        }).setOrigin(0.5);
-
-        powerup.powerupData = {
-            type: type,
-            lane: lane
-        };
-
-        this.powerups.push(powerup);
-    }
-
-    createHUD() {
-        const width = this.cameras.main.width;
-
-        // Score
-        this.scoreText = this.add.text(20, 20, 'Score: 0', {
-            fontSize: '24px',
-            fontFamily: 'monospace',
-            color: '#ffff00',
-            fontStyle: 'bold'
-        });
-
-        // Distance
-        this.distanceText = this.add.text(20, 50, 'Distance: 0m', {
-            fontSize: '18px',
-            fontFamily: 'monospace',
-            color: '#00ff00'
-        });
-
-        // Speed
-        this.speedText = this.add.text(20, 75, 'Speed: 300', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#00aaff'
-        });
-
-        // Back button
-        const backBtn = this.add.text(width - 20, 20, '← Menu', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            backgroundColor: '#333333',
-            padding: { x: 8, y: 4 }
-        }).setOrigin(1, 0);
-        backBtn.setInteractive({ useHandCursor: true });
-        backBtn.on('pointerdown', () => this.exitToMenu());
-        backBtn.on('pointerover', () => backBtn.setStyle({ backgroundColor: '#555555' }));
-        backBtn.on('pointerout', () => backBtn.setStyle({ backgroundColor: '#333333' }));
+        collectible.lane = lane;
+        collectible.value = 50;
+        this.collectibles.push(collectible);
     }
 
     update(time, delta) {
-        if (this.gameOver) return;
+        if (this.isGameOver) return;
 
-        // Increase distance and speed
+        // Increase speed over time
+        this.speed = Math.min(this.maxSpeed, this.speed + 0.02);
+
+        // Update distance
         this.distance += (this.speed * delta) / 1000;
-        this.speed = Math.min(this.maxSpeed, this.speed + this.speedIncrement * (delta / 1000));
 
-        // Update scrolling background
-        this.roadLines.forEach(line => {
-            line.y += this.speed * (delta / 1000);
-            if (line.y > 600) {
-                line.y = -40;
+        // Scroll lane dividers
+        this.laneDividers.forEach(dash => {
+            dash.y += (this.speed * delta) / 1000;
+            if (dash.y > this.trackBounds.y + this.trackBounds.height) {
+                dash.y = this.trackBounds.y - 25;
             }
         });
 
         // Update obstacles
         this.updateObstacles(delta);
 
-        // Update power-ups
-        this.updatePowerups(delta);
+        // Update collectibles
+        this.updateCollectibles(delta);
 
-        // Update HUD
-        this.scoreText.setText(`Score: ${Math.floor(this.score)}`);
-        this.distanceText.setText(`Distance: ${Math.floor(this.distance)}m`);
-        this.speedText.setText(`Speed: ${Math.floor(this.speed)}`);
+        // Passive score gain
+        this.score += Math.floor(this.speed / 100);
 
-        // Increase score based on distance
-        this.score += (this.speed / 100) * (delta / 1000);
-
-        // Adjust spawn rates based on speed
-        if (this.speed > 400 && this.obstacleTimer.delay > 1000) {
-            this.obstacleTimer.delay = 1000;
-        }
-        if (this.speed > 600 && this.obstacleTimer.delay > 700) {
-            this.obstacleTimer.delay = 700;
-        }
+        // Update UI
+        this.updateUI();
     }
 
     updateObstacles(delta) {
-        this.obstacles.forEach((obstacle, index) => {
-            if (!obstacle.active) return;
+        const playerY = this.player.y;
 
-            obstacle.y += this.speed * (delta / 1000);
-            if (obstacle.icon) {
-                obstacle.icon.setPosition(obstacle.x, obstacle.y);
-            }
+        this.obstacles.forEach((obstacle, index) => {
+            obstacle.y += (this.speed * delta) / 1000;
 
             // Check collision
-            const playerLane = this.lanes[this.currentLane];
-            if (Math.abs(obstacle.x - playerLane) < 30 &&
-                Math.abs(obstacle.y - this.player.y) < 40 &&
-                !this.isJumping) {
-                this.hitObstacle(obstacle);
+            if (!this.isJumping &&
+                obstacle.lane === this.currentLane &&
+                Math.abs(obstacle.y - playerY) < 30) {
+                this.hitObstacle(obstacle, index);
             }
 
-            // Remove if off screen
-            if (obstacle.y > 650) {
-                if (obstacle.icon) obstacle.icon.destroy();
+            // Remove off-screen
+            if (obstacle.y > this.trackBounds.y + this.trackBounds.height + 30) {
                 obstacle.destroy();
                 this.obstacles.splice(index, 1);
-
-                // Bonus for dodging
-                this.score += 10;
-                this.combo.addHit();
+                this.score += 10; // Dodge bonus
             }
         });
     }
 
-    updatePowerups(delta) {
-        this.powerups.forEach((powerup, index) => {
-            if (!powerup.active) return;
+    updateCollectibles(delta) {
+        const playerY = this.player.y;
 
-            powerup.y += this.speed * (delta / 1000);
-            if (powerup.icon) {
-                powerup.icon.setPosition(powerup.x, powerup.y);
+        this.collectibles.forEach((collectible, index) => {
+            collectible.y += (this.speed * delta) / 1000;
+            if (collectible.glow) {
+                collectible.glow.y = collectible.y;
             }
 
             // Check collection
-            const playerLane = this.lanes[this.currentLane];
-            if (Math.abs(powerup.x - playerLane) < 30 &&
-                Math.abs(powerup.y - this.player.y) < 40) {
-                this.collectPowerup(powerup);
+            if (collectible.lane === this.currentLane &&
+                Math.abs(collectible.y - playerY) < 35) {
+                this.collect(collectible, index);
             }
 
-            // Remove if off screen
-            if (powerup.y > 650) {
-                if (powerup.icon) powerup.icon.destroy();
-                powerup.destroy();
-                this.powerups.splice(index, 1);
+            // Remove off-screen
+            if (collectible.y > this.trackBounds.y + this.trackBounds.height + 30) {
+                if (collectible.glow) collectible.glow.destroy();
+                collectible.destroy();
+                this.collectibles.splice(index, 1);
             }
         });
     }
 
-    hitObstacle(obstacle) {
-        this.sounds.playSound('damage');
-        this.cameras.main.shake(200, 0.01);
-        this.particles.explosion(obstacle.x, obstacle.y, 0xff0000);
+    hitObstacle(obstacle, index) {
+        // Screen shake
+        this.cameras.main.shake(150, 0.01);
 
-        // Reduce score
-        this.score = Math.max(0, this.score + obstacle.obstacleData.type.points);
+        // Flash player
+        this.tweens.add({
+            targets: this.player,
+            alpha: 0.3,
+            duration: 100,
+            yoyo: true,
+            repeat: 2
+        });
 
         // Slow down
-        this.speed = Math.max(200, this.speed - 50);
+        this.speed = Math.max(150, this.speed - 80);
 
         // Remove obstacle
-        if (obstacle.icon) obstacle.icon.destroy();
         obstacle.destroy();
+        this.obstacles.splice(index, 1);
 
-        // Reset combo
-        this.combo.resetCombo();
-
-        // Check if game over (hit too many)
-        if (this.speed <= 200) {
-            this.endGame();
+        // Game over if too slow
+        if (this.speed <= 150) {
+            this.gameOver();
         }
     }
 
-    collectPowerup(powerup) {
-        this.sounds.playSound('collect');
-        this.particles.collectPowerUp(powerup.x, powerup.y);
-        this.particles.floatingText(powerup.x, powerup.y, `+${powerup.powerupData.type.points}`, '#ffff00');
-
-        this.score += powerup.powerupData.type.points;
-        this.combo.addHit();
+    collect(collectible, index) {
+        this.score += collectible.value;
 
         // Speed boost
-        this.speed = Math.min(this.maxSpeed, this.speed + 30);
+        this.speed = Math.min(this.maxSpeed, this.speed + 20);
 
-        // Remove powerup
-        if (powerup.icon) powerup.icon.destroy();
-        powerup.destroy();
+        // Collection effect
+        this.tweens.add({
+            targets: collectible,
+            scale: 1.5,
+            alpha: 0,
+            duration: 150,
+            onComplete: () => collectible.destroy()
+        });
+
+        if (collectible.glow) {
+            this.tweens.add({
+                targets: collectible.glow,
+                scale: 2,
+                alpha: 0,
+                duration: 150,
+                onComplete: () => collectible.glow.destroy()
+            });
+        }
+
+        this.collectibles.splice(index, 1);
     }
 
-    endGame() {
-        if (this.gameOver) return;
-        this.gameOver = true;
+    updateUI() {
+        this.scoreText.setText(Math.floor(this.score).toString());
+        this.distanceText.setText(`${Math.floor(this.distance)}m`);
+        this.speedText.setText(`Speed: ${Math.floor(this.speed)}`);
+    }
+
+    gameOver() {
+        this.isGameOver = true;
 
         if (this.obstacleTimer) this.obstacleTimer.remove();
-        if (this.powerupTimer) this.powerupTimer.remove();
+        if (this.collectibleTimer) this.collectibleTimer.remove();
 
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
+        const { width, height } = this.cameras.main;
 
-        const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.85);
-        overlay.setOrigin(0);
+        // Update stats
+        const finalScore = Math.floor(this.score);
+        const isNewBest = gameData.updateHighScore('sprintSurvivor', finalScore);
+        gameData.addToTotalScore(finalScore);
+        gameData.updateStat('sprintSurvivor', 'bestDistance', Math.floor(this.distance));
 
-        this.add.text(width / 2, height / 2 - 80, '🏁 SPRINT COMPLETE! 🏁', {
+        // Overlay
+        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.85);
+
+        // Game over text
+        this.add.text(width / 2, height / 2 - 80, 'Game Over', {
             fontSize: '32px',
-            fontFamily: 'monospace',
-            color: '#00ff00',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.add.text(width / 2, height / 2 - 20, `Final Score: ${Math.floor(this.score)}`, {
-            fontSize: '24px',
-            fontFamily: 'monospace',
-            color: '#ffff00'
+        // Score
+        this.add.text(width / 2, height / 2 - 20, finalScore.toString(), {
+            fontSize: '48px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#22c55e',
+            fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.add.text(width / 2, height / 2 + 15, `Distance: ${Math.floor(this.distance)}m`, {
-            fontSize: '20px',
-            fontFamily: 'monospace',
-            color: '#00aaff'
+        // New best indicator
+        if (isNewBest) {
+            this.add.text(width / 2, height / 2 + 30, 'New Best!', {
+                fontSize: '16px',
+                fontFamily: 'Inter, sans-serif',
+                color: '#22c55e'
+            }).setOrigin(0.5);
+        }
+
+        // Stats
+        this.add.text(width / 2, height / 2 + 70, `${Math.floor(this.distance)}m  ·  Max speed: ${Math.floor(this.speed)}`, {
+            fontSize: '14px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a'
         }).setOrigin(0.5);
 
-        this.add.text(width / 2, height / 2 + 45, `Max Speed: ${Math.floor(this.speed)}`, {
-            fontSize: '18px',
-            fontFamily: 'monospace',
-            color: '#ff00ff'
+        // Retry button
+        const retryBg = this.add.rectangle(width / 2, height / 2 + 130, 200, 50, COLORS.success);
+        this.add.text(width / 2, height / 2 + 130, 'Play Again', {
+            fontSize: '16px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
+            fontStyle: '600'
         }).setOrigin(0.5);
 
-        // Update stats
-        gameData.updateStat('sprintSurvivor.gamesPlayed', 1, 'add');
-        gameData.updateStat('sprintSurvivor.highScore', Math.floor(this.score), 'max');
-        gameData.updateStat('sprintSurvivor.maxDistance', Math.floor(this.distance), 'max');
-        gameData.save();
+        retryBg.setInteractive({ useHandCursor: true });
+        retryBg.on('pointerdown', () => this.scene.restart());
 
-        this.createReturnButton();
+        // Menu button
+        const menuBg = this.add.rectangle(width / 2, height / 2 + 195, 200, 50, COLORS.surface);
+        menuBg.setStrokeStyle(1, COLORS.surfaceLight);
+        this.add.text(width / 2, height / 2 + 195, 'Menu', {
+            fontSize: '16px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa'
+        }).setOrigin(0.5);
+
+        menuBg.setInteractive({ useHandCursor: true });
+        menuBg.on('pointerdown', () => this.exitGame());
     }
 
-    createReturnButton() {
-        const btn = this.add.text(400, 500, '[ Return to Menu ]', {
-            fontSize: '18px',
-            fontFamily: 'monospace',
-            color: '#00ff00',
-            backgroundColor: '#000000',
-            padding: { x: 15, y: 8 }
-        }).setOrigin(0.5);
-
-        btn.setInteractive({ useHandCursor: true });
-        btn.on('pointerdown', () => this.exitToMenu());
-        btn.on('pointerover', () => btn.setStyle({ backgroundColor: '#333333' }));
-        btn.on('pointerout', () => btn.setStyle({ backgroundColor: '#000000' }));
-    }
-
-    exitToMenu() {
+    exitGame() {
         if (this.obstacleTimer) this.obstacleTimer.remove();
-        if (this.powerupTimer) this.powerupTimer.remove();
-        this.scene.start('MainMenuScene');
+        if (this.collectibleTimer) this.collectibleTimer.remove();
+
+        this.cameras.main.fadeOut(200, 10, 10, 11);
+        this.time.delayedCall(200, () => {
+            this.scene.start('MainMenuScene');
+        });
     }
 }

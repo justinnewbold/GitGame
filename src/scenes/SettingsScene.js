@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { COLORS } from '../main.js';
 import { gameData } from '../utils/GameData.js';
 
 export default class SettingsScene extends Phaser.Scene {
@@ -7,341 +8,268 @@ export default class SettingsScene extends Phaser.Scene {
     }
 
     create() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
+        const { width, height } = this.cameras.main;
 
-        // Background
-        this.add.rectangle(0, 0, width, height, 0x1a1a2e).setOrigin(0);
+        this.cameras.main.fadeIn(300, 10, 10, 11);
+
+        // Header
+        this.createHeader(width);
+
+        // Settings sections
+        this.createSettings(width, height);
+
+        // Footer actions
+        this.createFooter(width, height);
+    }
+
+    createHeader(width) {
+        // Back button
+        const backBtn = this.add.container(24, 50);
+        const backBg = this.add.circle(0, 0, 20, COLORS.surface);
+        const backIcon = this.add.text(0, 0, '\u2190', {
+            fontSize: '20px',
+            color: '#71717a'
+        }).setOrigin(0.5);
+
+        backBtn.add([backBg, backIcon]);
+        backBg.setInteractive({ useHandCursor: true });
+
+        backBg.on('pointerdown', () => {
+            this.tweens.add({
+                targets: backBtn,
+                scale: 0.9,
+                duration: 50,
+                yoyo: true,
+                onComplete: () => {
+                    this.cameras.main.fadeOut(200, 10, 10, 11);
+                    this.time.delayedCall(200, () => {
+                        this.scene.start('MainMenuScene');
+                    });
+                }
+            });
+        });
 
         // Title
-        this.add.text(width / 2, 60, '⚙️ Settings', {
-            fontSize: '48px',
-            fontFamily: 'monospace',
-            color: '#00aaff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-
-        // Back button
-        this.createBackButton();
-
-        let yPos = 140;
-
-        // Sound Settings
-        this.createSection('🔊 Sound', yPos);
-        yPos += 40;
-
-        this.createToggle('Sound Effects', yPos, 'soundEnabled', (enabled) => {
-            gameData.data.settings.soundEnabled = enabled;
-            gameData.save();
-        });
-        yPos += 50;
-
-        this.createToggle('Music', yPos, 'musicEnabled', (enabled) => {
-            gameData.data.settings.musicEnabled = enabled;
-            gameData.save();
-        });
-        yPos += 70;
-
-        // Difficulty Settings
-        this.createSection('😊 Difficulty', yPos);
-        yPos += 40;
-
-        this.createDifficultySelector(yPos);
-        yPos += 80;
-
-        // Data Management
-        this.createSection('💾 Data', yPos);
-        yPos += 40;
-
-        this.createDataButtons(yPos);
-        yPos += 100;
-
-        // Stats Display
-        this.createStatsDisplay(yPos);
-
-        // Version
-        this.add.text(width / 2, height - 20, 'GitGame v1.0.0 - Made with ❤️', {
-            fontSize: '10px',
-            fontFamily: 'monospace',
-            color: '#555555'
-        }).setOrigin(0.5);
-    }
-
-    createSection(title, y) {
-        this.add.text(400, y, title, {
+        this.add.text(width / 2, 50, 'Settings', {
             fontSize: '24px',
-            fontFamily: 'monospace',
-            color: '#ffaa00',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
             fontStyle: 'bold'
         }).setOrigin(0.5);
-
-        // Underline
-        this.add.rectangle(400, y + 15, 300, 2, 0xffaa00);
     }
 
-    createToggle(label, y, settingKey, callback) {
-        const isEnabled = gameData.data.settings[settingKey];
+    createSettings(width, height) {
+        const startY = 120;
+        const itemHeight = 70;
+        let currentY = startY;
+
+        // Sound section header
+        this.add.text(24, currentY, 'AUDIO', {
+            fontSize: '12px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a',
+            fontStyle: '600'
+        });
+        currentY += 35;
+
+        // Sound Effects toggle
+        this.createToggle(width, currentY, 'Sound Effects', 'soundEnabled');
+        currentY += itemHeight;
+
+        // Music toggle
+        this.createToggle(width, currentY, 'Music', 'musicEnabled');
+        currentY += itemHeight;
+
+        // Haptics toggle
+        this.createToggle(width, currentY, 'Vibration', 'haptics');
+        currentY += itemHeight + 20;
+
+        // Data section header
+        this.add.text(24, currentY, 'DATA', {
+            fontSize: '12px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a',
+            fontStyle: '600'
+        });
+        currentY += 35;
+
+        // Stats display
+        this.createStatsCard(width, currentY);
+    }
+
+    createToggle(width, y, label, settingKey) {
+        const container = this.add.container(0, y);
+
+        // Background
+        const bg = this.add.rectangle(width / 2, 0, width - 48, 56, COLORS.surface);
+        bg.setStrokeStyle(1, COLORS.surfaceLight);
 
         // Label
-        this.add.text(250, y, label + ':', {
+        const labelText = this.add.text(40, 0, label, {
             fontSize: '16px',
-            fontFamily: 'monospace',
-            color: '#ffffff'
-        });
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa'
+        }).setOrigin(0, 0.5);
 
-        // Toggle button
-        const toggleBg = this.add.rectangle(500, y, 60, 30, isEnabled ? 0x00aa00 : 0xaa0000, 0.8);
-        toggleBg.setStrokeStyle(2, 0xffffff);
+        // Toggle
+        const isEnabled = gameData.getSetting(settingKey);
+        const toggleWidth = 50;
+        const toggleHeight = 28;
+        const toggleX = width - 55;
+
+        const toggleBg = this.add.rectangle(toggleX, 0, toggleWidth, toggleHeight,
+            isEnabled ? COLORS.primary : COLORS.surfaceLight
+        );
         toggleBg.setInteractive({ useHandCursor: true });
 
-        const toggleText = this.add.text(500, y, isEnabled ? 'ON' : 'OFF', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
+        const toggleKnob = this.add.circle(
+            isEnabled ? toggleX + 12 : toggleX - 12,
+            0,
+            10,
+            0xfafafa
+        );
+
+        container.add([bg, labelText, toggleBg, toggleKnob]);
 
         toggleBg.on('pointerdown', () => {
-            const newState = !gameData.data.settings[settingKey];
-            gameData.data.settings[settingKey] = newState;
-            gameData.save();
+            const newState = gameData.toggleSetting(settingKey);
 
-            toggleBg.setFillStyle(newState ? 0x00aa00 : 0xaa0000, 0.8);
-            toggleText.setText(newState ? 'ON' : 'OFF');
+            this.tweens.add({
+                targets: toggleKnob,
+                x: newState ? toggleX + 12 : toggleX - 12,
+                duration: 150,
+                ease: 'Quad.easeOut'
+            });
 
-            if (callback) callback(newState);
-
-            // Visual feedback
-            toggleBg.setScale(0.9);
             this.tweens.add({
                 targets: toggleBg,
-                scale: 1,
-                duration: 100
+                fillColor: newState ? COLORS.primary : COLORS.surfaceLight,
+                duration: 150
             });
-        });
-
-        toggleBg.on('pointerover', () => {
-            toggleBg.setFillStyle(isEnabled ? 0x00ff00 : 0xff0000, 1.0);
-        });
-
-        toggleBg.on('pointerout', () => {
-            toggleBg.setFillStyle(isEnabled ? 0x00aa00 : 0xaa0000, 0.8);
         });
     }
 
-    createDifficultySelector(y) {
-        const difficulties = ['normal', 'hard', 'nightmare'];
-        const currentDifficulty = gameData.getDifficulty();
+    createStatsCard(width, y) {
+        const stats = gameData.data.stats;
+        const cardHeight = 160;
 
-        const labels = {
-            normal: '😊 Normal',
-            hard: '😅 Hard',
-            nightmare: '💀 Nightmare'
-        };
+        const bg = this.add.rectangle(width / 2, y + cardHeight / 2, width - 48, cardHeight, COLORS.surface);
+        bg.setStrokeStyle(1, COLORS.surfaceLight);
 
-        const colors = {
-            normal: 0x00ff00,
-            hard: 0xffaa00,
-            nightmare: 0xff0000
-        };
+        // Stats
+        const statItems = [
+            { label: 'Games Played', value: stats.gamesPlayed },
+            { label: 'Total Score', value: stats.totalScore },
+            { label: 'Survivor Best', value: stats.gitSurvivor.highScore },
+            { label: 'Sprint Best', value: stats.sprintSurvivor.highScore },
+            { label: 'Debug Level', value: stats.bugBounty.bestLevel }
+        ];
 
-        difficulties.forEach((difficulty, index) => {
-            const x = 250 + (index * 120);
-            const isSelected = difficulty === currentDifficulty;
+        statItems.forEach((stat, index) => {
+            const itemY = y + 25 + index * 28;
 
-            const btn = this.add.rectangle(x, y, 110, 40,
-                isSelected ? colors[difficulty] : 0x333333, 0.8);
-            btn.setStrokeStyle(2, isSelected ? 0xffffff : 0x666666);
-            btn.setInteractive({ useHandCursor: true });
+            this.add.text(40, itemY, stat.label, {
+                fontSize: '14px',
+                fontFamily: 'Inter, sans-serif',
+                color: '#71717a'
+            }).setOrigin(0, 0.5);
 
-            const text = this.add.text(x, y, labels[difficulty], {
-                fontSize: '12px',
-                fontFamily: 'monospace',
-                color: isSelected ? '#000000' : '#888888',
-                fontStyle: isSelected ? 'bold' : 'normal'
-            }).setOrigin(0.5);
+            this.add.text(width - 40, itemY, stat.value.toString(), {
+                fontSize: '14px',
+                fontFamily: 'Inter, sans-serif',
+                color: '#fafafa',
+                fontStyle: '600'
+            }).setOrigin(1, 0.5);
+        });
+    }
 
-            btn.on('pointerdown', () => {
-                gameData.setDifficulty(difficulty);
-                this.scene.restart(); // Refresh to update display
-            });
+    createFooter(width, height) {
+        // Reset button
+        const resetBtn = this.add.container(width / 2, height - 100);
 
-            btn.on('pointerover', () => {
-                if (!isSelected) {
-                    btn.setFillStyle(0x555555, 0.8);
-                    text.setColor('#ffffff');
-                }
-            });
+        const resetBg = this.add.rectangle(0, 0, width - 48, 50, COLORS.surface);
+        resetBg.setStrokeStyle(1, COLORS.error);
 
-            btn.on('pointerout', () => {
-                if (!isSelected) {
-                    btn.setFillStyle(0x333333, 0.8);
-                    text.setColor('#888888');
-                }
-            });
+        const resetText = this.add.text(0, 0, 'Reset All Data', {
+            fontSize: '16px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#ef4444',
+            fontStyle: '600'
+        }).setOrigin(0.5);
+
+        resetBtn.add([resetBg, resetText]);
+        resetBg.setInteractive({ useHandCursor: true });
+
+        resetBg.on('pointerdown', () => {
+            this.showResetConfirmation(width, height);
         });
 
-        // Difficulty description
-        const descriptions = {
-            normal: 'Standard challenge - recommended for first-time players',
-            hard: 'Increased difficulty - 1.5x enemy strength and faster spawns',
-            nightmare: 'Extreme challenge - 2x multiplier, only for the brave!'
-        };
-
-        this.add.text(400, y + 35, descriptions[currentDifficulty], {
-            fontSize: '11px',
-            fontFamily: 'monospace',
-            color: '#888888',
-            align: 'center'
+        // Version
+        this.add.text(width / 2, height - 40, 'GitGame v2.0', {
+            fontSize: '12px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#52525b'
         }).setOrigin(0.5);
     }
 
-    createDataButtons(y) {
-        // View Stats button
-        const statsBtn = this.add.rectangle(300, y, 180, 40, 0x0000aa, 0.8);
-        statsBtn.setStrokeStyle(2, 0xffffff);
-        statsBtn.setInteractive({ useHandCursor: true });
-
-        this.add.text(300, y, '📊 View Stats', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-
-        statsBtn.on('pointerdown', () => {
-            this.scene.start('StatsScene');
-        });
-
-        statsBtn.on('pointerover', () => statsBtn.setFillStyle(0x0000ff, 1.0));
-        statsBtn.on('pointerout', () => statsBtn.setFillStyle(0x0000aa, 0.8));
-
-        // Reset Data button (dangerous!)
-        const resetBtn = this.add.rectangle(500, y, 180, 40, 0xaa0000, 0.8);
-        resetBtn.setStrokeStyle(2, 0xffffff);
-        resetBtn.setInteractive({ useHandCursor: true });
-
-        this.add.text(500, y, '🗑️ Reset All Data', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-
-        resetBtn.on('pointerdown', () => {
-            this.confirmReset();
-        });
-
-        resetBtn.on('pointerover', () => resetBtn.setFillStyle(0xff0000, 1.0));
-        resetBtn.on('pointerout', () => resetBtn.setFillStyle(0xaa0000, 0.8));
-    }
-
-    confirmReset() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-
+    showResetConfirmation(width, height) {
         // Overlay
-        const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.9);
-        overlay.setOrigin(0);
+        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.8);
         overlay.setInteractive();
 
-        // Confirmation box
-        const box = this.add.rectangle(width / 2, height / 2, 500, 250, 0x1a1a2e);
-        box.setStrokeStyle(3, 0xff0000);
+        // Modal
+        const modalBg = this.add.rectangle(width / 2, height / 2, width - 48, 200, COLORS.surface);
+        modalBg.setStrokeStyle(2, COLORS.error);
 
-        this.add.text(width / 2, height / 2 - 80, '⚠️ WARNING', {
-            fontSize: '32px',
-            fontFamily: 'monospace',
-            color: '#ff0000',
+        // Title
+        const title = this.add.text(width / 2, height / 2 - 60, 'Reset Data?', {
+            fontSize: '20px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.add.text(width / 2, height / 2 - 20,
-            'This will delete ALL your progress:\n\n' +
-            '• All achievements\n' +
-            '• All high scores\n' +
-            '• All statistics\n\n' +
-            'This cannot be undone!', {
+        // Description
+        const desc = this.add.text(width / 2, height / 2 - 20, 'All progress will be lost.\nThis cannot be undone.', {
             fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a',
             align: 'center'
         }).setOrigin(0.5);
 
         // Cancel button
-        const cancelBtn = this.add.rectangle(width / 2 - 80, height / 2 + 90, 120, 40, 0x00aa00, 0.8);
-        cancelBtn.setStrokeStyle(2, 0xffffff);
-        cancelBtn.setInteractive({ useHandCursor: true });
-
-        this.add.text(width / 2 - 80, height / 2 + 90, 'Cancel', {
-            fontSize: '16px',
-            fontFamily: 'monospace',
-            color: '#ffffff'
+        const cancelBg = this.add.rectangle(width / 2 - 70, height / 2 + 50, 120, 44, COLORS.surfaceLight);
+        const cancelText = this.add.text(width / 2 - 70, height / 2 + 50, 'Cancel', {
+            fontSize: '14px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa'
         }).setOrigin(0.5);
 
-        cancelBtn.on('pointerdown', () => {
+        cancelBg.setInteractive({ useHandCursor: true });
+        cancelBg.on('pointerdown', () => {
             overlay.destroy();
-            box.destroy();
-            this.scene.restart();
+            modalBg.destroy();
+            title.destroy();
+            desc.destroy();
+            cancelBg.destroy();
+            cancelText.destroy();
+            confirmBg.destroy();
+            confirmText.destroy();
         });
-
-        cancelBtn.on('pointerover', () => cancelBtn.setFillStyle(0x00ff00, 1.0));
-        cancelBtn.on('pointerout', () => cancelBtn.setFillStyle(0x00aa00, 0.8));
 
         // Confirm button
-        const confirmBtn = this.add.rectangle(width / 2 + 80, height / 2 + 90, 120, 40, 0xaa0000, 0.8);
-        confirmBtn.setStrokeStyle(2, 0xffffff);
-        confirmBtn.setInteractive({ useHandCursor: true });
-
-        this.add.text(width / 2 + 80, height / 2 + 90, 'DELETE', {
-            fontSize: '16px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-
-        confirmBtn.on('pointerdown', () => {
-            gameData.reset();
-            overlay.destroy();
-            box.destroy();
-            this.scene.start('MainMenuScene');
-        });
-
-        confirmBtn.on('pointerover', () => confirmBtn.setFillStyle(0xff0000, 1.0));
-        confirmBtn.on('pointerout', () => confirmBtn.setFillStyle(0xaa0000, 0.8));
-    }
-
-    createStatsDisplay(y) {
-        const stats = gameData.data.stats;
-
-        this.add.text(400, y, '📈 Quick Stats', {
-            fontSize: '16px',
-            fontFamily: 'monospace',
-            color: '#00aaff'
-        }).setOrigin(0.5);
-
-        const statText = `Games Played: ${stats.gamesPlayed} | Total Score: ${stats.totalScore}\n` +
-                        `Achievements: ${gameData.data.achievements.length} / ${gameData.getAchievements().length}`;
-
-        this.add.text(400, y + 30, statText, {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: '#888888',
-            align: 'center'
-        }).setOrigin(0.5);
-    }
-
-    createBackButton() {
-        const backBtn = this.add.text(20, 20, '← Back to Menu', {
+        const confirmBg = this.add.rectangle(width / 2 + 70, height / 2 + 50, 120, 44, COLORS.error);
+        const confirmText = this.add.text(width / 2 + 70, height / 2 + 50, 'Reset', {
             fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            backgroundColor: '#333333',
-            padding: { x: 10, y: 5 }
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
+            fontStyle: '600'
+        }).setOrigin(0.5);
+
+        confirmBg.setInteractive({ useHandCursor: true });
+        confirmBg.on('pointerdown', () => {
+            gameData.reset();
+            this.scene.restart();
         });
-        backBtn.setInteractive({ useHandCursor: true });
-        backBtn.on('pointerdown', () => this.scene.start('MainMenuScene'));
-        backBtn.on('pointerover', () => backBtn.setStyle({ backgroundColor: '#555555' }));
-        backBtn.on('pointerout', () => backBtn.setStyle({ backgroundColor: '#333333' }));
     }
 }

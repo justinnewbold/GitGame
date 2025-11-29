@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { COLORS } from '../main.js';
 
 export default class BootScene extends Phaser.Scene {
     constructor() {
@@ -6,76 +7,43 @@ export default class BootScene extends Phaser.Scene {
     }
 
     preload() {
-        // Create loading bar
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
+        const { width, height } = this.cameras.main;
+        const centerX = width / 2;
+        const centerY = height / 2;
 
-        const progressBar = this.add.graphics();
-        const progressBox = this.add.graphics();
-        progressBox.fillStyle(0x222222, 0.8);
-        progressBox.fillRect(width / 2 - 160, height / 2 - 25, 320, 50);
+        // Minimal loading indicator
+        const progressTrack = this.add.rectangle(centerX, centerY + 60, 200, 4, COLORS.surface);
+        const progressBar = this.add.rectangle(centerX - 100, centerY + 60, 0, 4, COLORS.primary);
+        progressBar.setOrigin(0, 0.5);
 
-        const loadingText = this.make.text({
-            x: width / 2,
-            y: height / 2 - 50,
-            text: 'Loading GitGame...',
-            style: {
-                font: '20px monospace',
-                fill: '#00ff00'
-            }
-        });
-        loadingText.setOrigin(0.5, 0.5);
+        // Logo text
+        this.add.text(centerX, centerY - 20, 'GitGame', {
+            fontSize: '32px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
 
-        const percentText = this.make.text({
-            x: width / 2,
-            y: height / 2,
-            text: '0%',
-            style: {
-                font: '18px monospace',
-                fill: '#ffffff'
-            }
-        });
-        percentText.setOrigin(0.5, 0.5);
+        this.add.text(centerX, centerY + 20, 'Loading...', {
+            fontSize: '14px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a'
+        }).setOrigin(0.5);
 
-        const assetText = this.make.text({
-            x: width / 2,
-            y: height / 2 + 50,
-            text: '',
-            style: {
-                font: '12px monospace',
-                fill: '#888888'
-            }
-        });
-        assetText.setOrigin(0.5, 0.5);
-
-        // Update progress bar
+        // Progress updates
         this.load.on('progress', (value) => {
-            progressBar.clear();
-            progressBar.fillStyle(0x00ff00, 1);
-            progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
-            percentText.setText(parseInt(value * 100) + '%');
+            progressBar.width = 200 * value;
         });
 
-        this.load.on('fileprogress', (file) => {
-            assetText.setText('Loading: ' + file.key);
-        });
-
-        this.load.on('complete', () => {
-            progressBar.destroy();
-            progressBox.destroy();
-            loadingText.destroy();
-            percentText.destroy();
-            assetText.destroy();
-        });
-
-        // Here we would load actual assets
-        // For now, just simulate loading
-        this.load.image('logo', 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwZmYwMCIvPjwvc3ZnPg==');
+        // Simulate minimal asset loading
+        this.load.image('placeholder', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
     }
 
     create() {
-        // Move to main menu after a short delay
-        this.time.delayedCall(500, () => {
+        // Fade transition to menu
+        this.cameras.main.fadeOut(300, 10, 10, 11);
+
+        this.time.delayedCall(300, () => {
             this.scene.start('MainMenuScene');
         });
     }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { COLORS } from '../main.js';
 import { gameData } from '../utils/GameData.js';
 
 export default class MainMenuScene extends Phaser.Scene {
@@ -7,274 +8,285 @@ export default class MainMenuScene extends Phaser.Scene {
     }
 
     create() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
+        const { width, height } = this.cameras.main;
 
-        // Background
-        this.add.rectangle(0, 0, width, height, 0x1a1a2e).setOrigin(0);
+        // Fade in
+        this.cameras.main.fadeIn(400, 10, 10, 11);
 
-        // Difficulty selector
-        this.createDifficultySelector();
+        // Subtle animated background gradient dots
+        this.createBackgroundEffect();
 
-        // Title
-        const title = this.add.text(width / 2, 80, 'GitGame', {
-            fontSize: '64px',
-            fontFamily: 'monospace',
-            color: '#00ff00',
-            fontStyle: 'bold'
-        });
-        title.setOrigin(0.5);
+        // Header section
+        this.createHeader(width);
 
-        // Subtitle with humor
-        const subtitle = this.add.text(width / 2, 130, '⚠️ Only the Best Devs Survive! ⚠️', {
-            fontSize: '16px',
-            fontFamily: 'monospace',
-            color: '#ffaa00'
-        });
-        subtitle.setOrigin(0.5);
-
-        // Funny quote
-        const quotes = [
-            '"Works on my machine" - Famous Last Words',
-            '"It\'s not a bug, it\'s a feature" - Survivor Chronicles',
-            '"Just one more merge..." - Epitaph',
-            '"I\'ll fix it in production" - Legends Never Die',
-            '"Who needs tests anyway?" - Natural Selection'
-        ];
-        const randomQuote = Phaser.Utils.Array.GetRandom(quotes);
-        const quote = this.add.text(width / 2, 160, randomQuote, {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: '#888888',
-            fontStyle: 'italic'
-        });
-        quote.setOrigin(0.5);
-
-        // Game mode buttons
-        const buttonY = 220;
-        const buttonSpacing = 80;
-
-        this.createGameModeButton(width / 2, buttonY,
-            '🗡️ Git Survivor',
-            'Roguelike: Face merge conflicts & bugs!',
-            'GitSurvivorScene',
-            0x4a90e2);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing,
-            '🏰 Code Defense',
-            'Tower Defense: Protect your codebase!',
-            'CodeDefenseScene',
-            0xe24a4a);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 2,
-            '⏰ PR Rush',
-            'Time Management: Review PRs under pressure!',
-            'PRRushScene',
-            0xe2a94a);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 3,
-            '⚔️ Dev Commander',
-            'RTS: Manage your dev team!',
-            'DevCommanderScene',
-            0x7e4ae2);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 4,
-            '🏰 Debug Dungeon',
-            'Dungeon Crawler: Clear rooms of bugs!',
-            'DebugDungeonScene',
-            0x9b59b6);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 5,
-            '🏎️ Refactor Race',
-            'Time Trial: Refactor code at speed!',
-            'RefactorRaceScene',
-            0x16a085);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 6,
-            '🏃 Sprint Survivor',
-            'Endless Runner: Dodge to survive!',
-            'SprintSurvivorScene',
-            0x3498db);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 7,
-            '🐛 Bug Bounty',
-            'Puzzle: Fix bugs with limited moves!',
-            'BugBountyScene',
-            0xe74c3c);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 8,
-            '⛏️ Legacy Excavator',
-            'Mining: Dig for code artifacts!',
-            'LegacyExcavatorScene',
-            0xf39c12);
-
-        this.createGameModeButton(width / 2, buttonY + buttonSpacing * 9,
-            '👹 Boss Rush',
-            'Challenge: Fight all bosses!',
-            'BossRushScene',
-            0xc0392b);
-
-        // Settings button
-        const settingsBtn = this.add.text(width - 20, 20, '⚙️ Settings', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            backgroundColor: '#333333',
-            padding: { x: 10, y: 5 }
-        });
-        settingsBtn.setOrigin(1, 0);
-        settingsBtn.setInteractive({ useHandCursor: true });
-
-        settingsBtn.on('pointerdown', () => {
-            this.scene.start('SettingsScene');
-        });
-
-        settingsBtn.on('pointerover', () => {
-            settingsBtn.setStyle({ backgroundColor: '#555555' });
-        });
-
-        settingsBtn.on('pointerout', () => {
-            settingsBtn.setStyle({ backgroundColor: '#333333' });
-        });
+        // Game mode cards
+        this.createGameCards(width, height);
 
         // Footer
-        const footer = this.add.text(width / 2, height - 20,
-            'Made with ❤️ and lots of git conflicts', {
-            fontSize: '10px',
-            fontFamily: 'monospace',
-            color: '#555555'
-        });
-        footer.setOrigin(0.5);
+        this.createFooter(width, height);
     }
 
-    createDifficultySelector() {
-        const difficulties = ['normal', 'hard', 'nightmare'];
-        const currentDifficulty = gameData.getDifficulty();
+    createBackgroundEffect() {
+        // Subtle floating particles
+        for (let i = 0; i < 20; i++) {
+            const x = Phaser.Math.Between(0, 390);
+            const y = Phaser.Math.Between(0, 844);
+            const size = Phaser.Math.Between(1, 3);
+            const alpha = Phaser.Math.FloatBetween(0.05, 0.15);
 
-        this.add.text(20, 20, 'Difficulty:', {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: '#ffffff'
-        });
+            const dot = this.add.circle(x, y, size, COLORS.primary, alpha);
 
-        difficulties.forEach((difficulty, index) => {
-            const x = 100 + (index * 100);
-            const y = 20;
-
-            const colors = {
-                normal: 0x00ff00,
-                hard: 0xffaa00,
-                nightmare: 0xff0000
-            };
-
-            const labels = {
-                normal: '😊 Normal',
-                hard: '😅 Hard',
-                nightmare: '💀 Nightmare'
-            };
-
-            const isSelected = difficulty === currentDifficulty;
-
-            const btn = this.add.text(x, y, labels[difficulty], {
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                color: isSelected ? '#ffffff' : '#888888',
-                backgroundColor: isSelected ? '#' + colors[difficulty].toString(16).padStart(6, '0') : '#333333',
-                padding: { x: 8, y: 4 }
-            });
-
-            btn.setInteractive({ useHandCursor: true });
-
-            btn.on('pointerdown', () => {
-                gameData.setDifficulty(difficulty);
-                this.scene.restart(); // Refresh the menu
-            });
-
-            btn.on('pointerover', () => {
-                if (!isSelected) {
-                    btn.setStyle({ backgroundColor: '#555555' });
+            this.tweens.add({
+                targets: dot,
+                y: y - 100,
+                alpha: 0,
+                duration: Phaser.Math.Between(8000, 15000),
+                repeat: -1,
+                onRepeat: () => {
+                    dot.x = Phaser.Math.Between(0, 390);
+                    dot.y = 900;
+                    dot.alpha = alpha;
                 }
-            });
-
-            btn.on('pointerout', () => {
-                if (!isSelected) {
-                    btn.setStyle({ backgroundColor: '#333333' });
-                }
-            });
-        });
-
-        // Stats display
-        const gamesPlayed = gameData.getStat('gamesPlayed');
-        const totalScore = gameData.getStat('totalScore');
-
-        if (gamesPlayed > 0) {
-            this.add.text(20, 45, `Games Played: ${gamesPlayed} | Total Score: ${totalScore}`, {
-                fontSize: '10px',
-                fontFamily: 'monospace',
-                color: '#888888'
             });
         }
     }
 
-    createGameModeButton(x, y, title, description, sceneName, color) {
-        // Button background
-        const buttonWidth = 600;
-        const buttonHeight = 60;
+    createHeader(width) {
+        const centerX = width / 2;
 
-        const button = this.add.rectangle(x, y, buttonWidth, buttonHeight, color, 0.8);
-        button.setStrokeStyle(2, 0xffffff);
-        button.setInteractive({ useHandCursor: true });
-
-        // Title text
-        const titleText = this.add.text(x, y - 12, title, {
-            fontSize: '20px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
+        // Logo
+        this.add.text(centerX, 80, 'GitGame', {
+            fontSize: '42px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
             fontStyle: 'bold'
-        });
-        titleText.setOrigin(0.5);
+        }).setOrigin(0.5);
 
-        // Description text
-        const descText = this.add.text(x, y + 12, description, {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: '#dddddd'
-        });
-        descText.setOrigin(0.5);
+        // Tagline
+        this.add.text(centerX, 125, 'Survive the code', {
+            fontSize: '16px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a'
+        }).setOrigin(0.5);
 
-        // Hover effects
-        button.on('pointerover', () => {
-            button.setFillStyle(color, 1.0);
-            button.setScale(1.05);
-            titleText.setScale(1.05);
-            descText.setScale(1.05);
-        });
+        // Stats pill
+        const gamesPlayed = gameData.data.stats.gamesPlayed;
+        if (gamesPlayed > 0) {
+            const statsBg = this.add.rectangle(centerX, 165, 140, 32, COLORS.surface, 1);
+            statsBg.setStrokeStyle(1, COLORS.surfaceLight);
 
-        button.on('pointerout', () => {
-            button.setFillStyle(color, 0.8);
-            button.setScale(1.0);
-            titleText.setScale(1.0);
-            descText.setScale(1.0);
-        });
+            this.add.text(centerX, 165, `${gamesPlayed} games played`, {
+                fontSize: '12px',
+                fontFamily: 'Inter, sans-serif',
+                color: '#71717a'
+            }).setOrigin(0.5);
+        }
 
-        button.on('pointerdown', () => {
-            button.setScale(0.95);
-            titleText.setScale(0.95);
-            descText.setScale(0.95);
-        });
+        // Settings button (top right)
+        const settingsBtn = this.add.container(width - 24, 50);
+        const settingsBg = this.add.circle(0, 0, 20, COLORS.surface);
+        const settingsIcon = this.add.text(0, 0, '\u2699', {
+            fontSize: '18px',
+            color: '#71717a'
+        }).setOrigin(0.5);
 
-        button.on('pointerup', () => {
-            button.setScale(1.0);
-            titleText.setScale(1.0);
-            descText.setScale(1.0);
+        settingsBtn.add([settingsBg, settingsIcon]);
+        settingsBg.setInteractive({ useHandCursor: true });
 
-            // Transition to the selected game mode
-            this.cameras.main.fade(250, 0, 0, 0);
-            this.time.delayedCall(250, () => {
-                this.scene.start(sceneName);
+        settingsBg.on('pointerover', () => {
+            this.tweens.add({
+                targets: settingsBg,
+                fillColor: COLORS.surfaceLight,
+                duration: 150
             });
         });
 
-        return button;
+        settingsBg.on('pointerout', () => {
+            this.tweens.add({
+                targets: settingsBg,
+                fillColor: COLORS.surface,
+                duration: 150
+            });
+        });
+
+        settingsBg.on('pointerdown', () => {
+            this.tweens.add({
+                targets: settingsBtn,
+                scale: 0.9,
+                duration: 50,
+                yoyo: true,
+                onComplete: () => {
+                    this.cameras.main.fadeOut(200, 10, 10, 11);
+                    this.time.delayedCall(200, () => {
+                        this.scene.start('SettingsScene');
+                    });
+                }
+            });
+        });
+    }
+
+    createGameCards(width, height) {
+        const centerX = width / 2;
+        const cardWidth = width - 48;
+        const cardHeight = 140;
+        const startY = 230;
+        const cardGap = 20;
+
+        const games = [
+            {
+                key: 'GitSurvivorScene',
+                title: 'Survivor',
+                subtitle: 'Dodge bugs, survive waves',
+                icon: '\u2694',
+                color: COLORS.primary,
+                highScore: gameData.getHighScore('gitSurvivor')
+            },
+            {
+                key: 'SprintSurvivorScene',
+                title: 'Sprint',
+                subtitle: 'Endless runner, beat your distance',
+                icon: '\u26A1',
+                color: COLORS.success,
+                highScore: gameData.getHighScore('sprintSurvivor')
+            },
+            {
+                key: 'BugBountyScene',
+                title: 'Debug',
+                subtitle: 'Fix bugs, solve puzzles',
+                icon: '\u{1F41B}',
+                color: COLORS.warning,
+                highScore: gameData.getStat('bugBounty', 'bestLevel'),
+                highScoreLabel: 'Best Level'
+            }
+        ];
+
+        games.forEach((game, index) => {
+            const y = startY + (cardHeight + cardGap) * index;
+            this.createGameCard(centerX, y, cardWidth, cardHeight, game, index);
+        });
+    }
+
+    createGameCard(x, y, width, height, game, index) {
+        const container = this.add.container(x, y);
+
+        // Card background
+        const bg = this.add.rectangle(0, 0, width, height, COLORS.surface, 1);
+        bg.setStrokeStyle(1, COLORS.surfaceLight);
+
+        // Accent bar on left
+        const accent = this.add.rectangle(-width / 2 + 3, 0, 6, height - 20, game.color);
+
+        // Icon
+        const icon = this.add.text(-width / 2 + 40, -20, game.icon, {
+            fontSize: '36px'
+        }).setOrigin(0.5);
+
+        // Title
+        const title = this.add.text(-width / 2 + 80, -25, game.title, {
+            fontSize: '22px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
+            fontStyle: '600'
+        }).setOrigin(0, 0.5);
+
+        // Subtitle
+        const subtitle = this.add.text(-width / 2 + 80, 5, game.subtitle, {
+            fontSize: '13px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#71717a'
+        }).setOrigin(0, 0.5);
+
+        // High score badge
+        if (game.highScore > 0) {
+            const label = game.highScoreLabel || 'Best';
+            const scoreBg = this.add.rectangle(width / 2 - 50, -20, 80, 28, COLORS.surfaceLight);
+            const scoreText = this.add.text(width / 2 - 50, -20, `${label}: ${game.highScore}`, {
+                fontSize: '11px',
+                fontFamily: 'Inter, sans-serif',
+                color: '#a1a1aa'
+            }).setOrigin(0.5);
+            container.add([scoreBg, scoreText]);
+        }
+
+        // Play button
+        const playBtnX = width / 2 - 50;
+        const playBtnY = 30;
+        const playBtn = this.add.rectangle(playBtnX, playBtnY, 80, 36, game.color);
+        const playText = this.add.text(playBtnX, playBtnY, 'Play', {
+            fontSize: '14px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#fafafa',
+            fontStyle: '600'
+        }).setOrigin(0.5);
+
+        container.add([bg, accent, icon, title, subtitle, playBtn, playText]);
+
+        // Make entire card interactive
+        bg.setInteractive({ useHandCursor: true });
+
+        bg.on('pointerover', () => {
+            this.tweens.add({
+                targets: container,
+                scale: 1.02,
+                duration: 150,
+                ease: 'Quad.easeOut'
+            });
+            this.tweens.add({
+                targets: bg,
+                fillColor: COLORS.surfaceLight,
+                duration: 150
+            });
+        });
+
+        bg.on('pointerout', () => {
+            this.tweens.add({
+                targets: container,
+                scale: 1,
+                duration: 150,
+                ease: 'Quad.easeOut'
+            });
+            this.tweens.add({
+                targets: bg,
+                fillColor: COLORS.surface,
+                duration: 150
+            });
+        });
+
+        bg.on('pointerdown', () => {
+            this.tweens.add({
+                targets: container,
+                scale: 0.98,
+                duration: 50,
+                yoyo: true,
+                onComplete: () => {
+                    this.cameras.main.fadeOut(200, 10, 10, 11);
+                    this.time.delayedCall(200, () => {
+                        this.scene.start(game.key);
+                    });
+                }
+            });
+        });
+
+        // Entrance animation
+        container.alpha = 0;
+        container.y = y + 30;
+        this.tweens.add({
+            targets: container,
+            alpha: 1,
+            y: y,
+            duration: 400,
+            delay: 100 + index * 100,
+            ease: 'Quad.easeOut'
+        });
+
+        return container;
+    }
+
+    createFooter(width, height) {
+        this.add.text(width / 2, height - 40, 'v2.0', {
+            fontSize: '12px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#52525b'
+        }).setOrigin(0.5);
     }
 }

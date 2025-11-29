@@ -162,11 +162,11 @@ export default class MainMenuScene extends Phaser.Scene {
 
         games.forEach((game, index) => {
             const y = startY + (cardHeight + cardGap) * index;
-            this.createGameCard(centerX, y, cardWidth, cardHeight, game);
+            this.createGameCard(centerX, y, cardWidth, cardHeight, game, index);
         });
     }
 
-    createGameCard(x, y, width, height, game) {
+    createGameCard(x, y, width, height, game, index) {
         const container = this.add.container(x, y);
 
         // Card background
@@ -275,7 +275,7 @@ export default class MainMenuScene extends Phaser.Scene {
             alpha: 1,
             y: y,
             duration: 400,
-            delay: 100 + games.indexOf(game) * 100,
+            delay: 100 + index * 100,
             ease: 'Quad.easeOut'
         });
 

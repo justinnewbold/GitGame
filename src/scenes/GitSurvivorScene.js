@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import SoundManager from '../utils/SoundManager.js';
 import ParticleEffects from '../utils/ParticleEffects.js';
-import PowerUpManager from '../utils/PowerUps.js';
+import PowerUpManager, { PowerUpTypes } from '../utils/PowerUps.js';
 import ComboSystem from '../utils/ComboSystem.js';
 import TutorialSystem from '../utils/TutorialSystem.js';
 import { gameData } from '../utils/GameData.js';
@@ -23,6 +23,7 @@ export default class GitSurvivorScene extends Phaser.Scene {
         this.enemiesKilled = 0;
         this.bossActive = false;
         this.powerUpsCollected = 0;
+        this.lastLevelUpAt = 0; // Track last level up to prevent multiple triggers
 
         // Difficulty multiplier
         const difficulty = gameData.getDifficulty();
@@ -261,9 +262,11 @@ export default class GitSurvivorScene extends Phaser.Scene {
             this.spawnBoss();
         }
 
-        // Level up every 10 kills
-        if (this.enemiesKilled > 0 && this.enemiesKilled % 10 === 0 && this.score % 10 === 0) {
+        // Level up every 10 kills (fixed logic to prevent multiple triggers)
+        const nextLevelUpAt = this.lastLevelUpAt + 10;
+        if (this.enemiesKilled >= nextLevelUpAt) {
             this.levelUp();
+            this.lastLevelUpAt = nextLevelUpAt;
         }
     }
 
@@ -379,8 +382,10 @@ export default class GitSurvivorScene extends Phaser.Scene {
     }
 
     updateEnemies() {
-        this.enemies.forEach((enemy, index) => {
-            if (!enemy.active) return;
+        // Use reverse iteration to safely remove enemies while iterating
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (!enemy.active) continue;
 
             const data = enemy.enemyData;
 
@@ -415,13 +420,13 @@ export default class GitSurvivorScene extends Phaser.Scene {
                     enemy.healthBarBg.destroy();
                 }
                 enemy.destroy();
-                this.enemies.splice(index, 1);
+                this.enemies.splice(i, 1);
 
                 if (data.isBoss) {
                     this.bossActive = false;
                 }
             }
-        });
+        }
     }
 
     enemyKilled(enemy, isBoss) {
@@ -500,11 +505,12 @@ export default class GitSurvivorScene extends Phaser.Scene {
     }
 
     updateProjectiles() {
-        this.projectiles.forEach((projectile, index) => {
-            if (!projectile.active) {
-                this.projectiles.splice(index, 1);
+        // Use reverse iteration to safely remove projectiles while iterating
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            if (!this.projectiles[i].active) {
+                this.projectiles.splice(i, 1);
             }
-        });
+        }
     }
 
     checkCollisions() {

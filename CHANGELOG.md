@@ -8,14 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Logger utility for structured, filterable logging
-- PerformanceMonitor for FPS and memory tracking
-- DeviceDetection utility for mobile vs desktop optimization
-- .gitignore file for proper version control
-- Comprehensive testing infrastructure with unit tests
-- GameConfig.js for centralized configuration constants
-- BaseScene class for shared scene functionality
-- Export/import functionality for game data backups
+- **Development Tools:**
+  - Logger utility for structured, filterable logging with category filtering
+  - PerformanceMonitor for FPS and memory tracking with F3 overlay toggle
+  - DeviceDetection utility for mobile vs desktop optimization
+  - ErrorHandler for global error handling and crash prevention
+  - InputManager for centralized keyboard/mouse/touch/gamepad input
+  - SaveStateManager for robust game state persistence with autosave
+  - SceneTransitionManager with 10 different transition effects
+  - AssetLoader for future-proof asset loading and management
+- **Configuration:**
+  - .gitignore file for proper version control
+  - .eslintrc.json for code quality enforcement
+  - CHANGELOG.md for professional change tracking
+  - Comprehensive testing infrastructure with unit tests
+  - GameConfig.js for centralized configuration constants
+- **Architecture:**
+  - BaseScene class for shared scene functionality
+  - Export/import functionality for game data backups
+- **Documentation:**
+  - Enhanced README with setup guide, development tools, and contribution guidelines
+  - Keyboard shortcuts reference
+  - Project structure documentation
 
 ### Changed
 - Improved GameData with robust error handling and path validation

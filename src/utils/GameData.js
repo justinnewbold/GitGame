@@ -11,13 +11,21 @@ export default class GameData {
         try {
             const saved = localStorage.getItem(this.storageKey);
             if (saved) {
-                return JSON.parse(saved);
+                const parsed = JSON.parse(saved);
+                // Validate the structure and merge with defaults to ensure all fields exist
+                return this.mergeWithDefaults(parsed);
             }
         } catch (e) {
-            console.warn('Could not load game data:', e);
+            console.error('Failed to load game data, using defaults:', e.message);
+            // If parsing fails, clear corrupted data
+            this.clearCorruptedData();
         }
 
         // Default data structure
+        return this.getDefaultData();
+    }
+
+    getDefaultData() {
         return {
             stats: {
                 gamesPlayed: 0,
@@ -50,9 +58,51 @@ export default class GameData {
 
     save() {
         try {
-            localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+            const serialized = JSON.stringify(this.data);
+            // Check if serialization worked and data isn't too large
+            if (serialized && serialized.length < 5000000) { // 5MB limit
+                localStorage.setItem(this.storageKey, serialized);
+                return true;
+            } else {
+                console.error('Game data too large to save');
+                return false;
+            }
         } catch (e) {
-            console.warn('Could not save game data:', e);
+            console.error('Failed to save game data:', e.message);
+            // Check for quota exceeded error
+            if (e.name === 'QuotaExceededError') {
+                console.error('Storage quota exceeded. Consider clearing old data.');
+            }
+            return false;
+        }
+    }
+
+    // Merge saved data with defaults to handle missing fields
+    mergeWithDefaults(saved) {
+        const defaults = this.getDefaultData();
+
+        // Deep merge function
+        const deepMerge = (target, source) => {
+            const result = { ...target };
+            for (const key in source) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    result[key] = deepMerge(target[key] || {}, source[key]);
+                } else {
+                    result[key] = source[key] !== undefined ? source[key] : target[key];
+                }
+            }
+            return result;
+        };
+
+        return deepMerge(defaults, saved);
+    }
+
+    // Clear corrupted localStorage data
+    clearCorruptedData() {
+        try {
+            localStorage.removeItem(this.storageKey);
+        } catch (e) {
+            console.error('Failed to clear corrupted data:', e.message);
         }
     }
 
@@ -91,36 +141,60 @@ export default class GameData {
     }
 
     updateStat(path, value, operation = 'set') {
-        const keys = path.split('.');
-        let current = this.data.stats;
+        try {
+            const keys = path.split('.');
+            let current = this.data.stats;
 
-        for (let i = 0; i < keys.length - 1; i++) {
-            current = current[keys[i]];
+            // Navigate and create missing intermediate objects
+            for (let i = 0; i < keys.length - 1; i++) {
+                const key = keys[i];
+                if (!current[key] || typeof current[key] !== 'object') {
+                    current[key] = {};
+                }
+                current = current[key];
+            }
+
+            const lastKey = keys[keys.length - 1];
+
+            // Validate value is a number for numeric operations
+            if ((operation === 'increment' || operation === 'max') && typeof value !== 'number') {
+                console.error(`Invalid value type for ${operation} operation: ${typeof value}`);
+                return false;
+            }
+
+            // Perform operation
+            if (operation === 'increment') {
+                current[lastKey] = (current[lastKey] || 0) + value;
+            } else if (operation === 'max') {
+                current[lastKey] = Math.max(current[lastKey] || 0, value);
+            } else {
+                current[lastKey] = value;
+            }
+
+            return this.save();
+        } catch (e) {
+            console.error(`Failed to update stat '${path}':`, e.message);
+            return false;
         }
-
-        const lastKey = keys[keys.length - 1];
-
-        if (operation === 'increment') {
-            current[lastKey] = (current[lastKey] || 0) + value;
-        } else if (operation === 'max') {
-            current[lastKey] = Math.max(current[lastKey] || 0, value);
-        } else {
-            current[lastKey] = value;
-        }
-
-        this.save();
     }
 
     getStat(path) {
-        const keys = path.split('.');
-        let current = this.data.stats;
+        try {
+            const keys = path.split('.');
+            let current = this.data.stats;
 
-        for (let key of keys) {
-            current = current[key];
-            if (current === undefined) return 0;
+            for (let key of keys) {
+                if (current === null || current === undefined) {
+                    return 0;
+                }
+                current = current[key];
+            }
+
+            return current !== undefined ? current : 0;
+        } catch (e) {
+            console.error(`Failed to get stat '${path}':`, e.message);
+            return 0;
         }
-
-        return current;
     }
 
     getDifficulty() {
@@ -157,8 +231,46 @@ export default class GameData {
     }
 
     reset() {
-        localStorage.removeItem(this.storageKey);
-        this.data = this.load();
+        try {
+            localStorage.removeItem(this.storageKey);
+            this.data = this.getDefaultData();
+            this.save();
+            return true;
+        } catch (e) {
+            console.error('Failed to reset game data:', e.message);
+            return false;
+        }
+    }
+
+    // Validate data integrity
+    validateData() {
+        if (!this.data || typeof this.data !== 'object') return false;
+        if (!this.data.stats || typeof this.data.stats !== 'object') return false;
+        if (!this.data.settings || typeof this.data.settings !== 'object') return false;
+        if (!Array.isArray(this.data.achievements)) return false;
+        return true;
+    }
+
+    // Export data for backup
+    exportData() {
+        try {
+            return JSON.stringify(this.data, null, 2);
+        } catch (e) {
+            console.error('Failed to export data:', e.message);
+            return null;
+        }
+    }
+
+    // Import data from backup
+    importData(jsonString) {
+        try {
+            const imported = JSON.parse(jsonString);
+            this.data = this.mergeWithDefaults(imported);
+            return this.save();
+        } catch (e) {
+            console.error('Failed to import data:', e.message);
+            return false;
+        }
     }
 }
 

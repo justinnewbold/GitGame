@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "echo \"No tests yet - we're moving too fast!\" && exit 0"
+    "test": "node tests/run-tests.js",
+    "test:watch": "node --test --watch tests/**/*.test.js"
   },
   "repository": {
     "type": "git",

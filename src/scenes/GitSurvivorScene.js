@@ -1,12 +1,14 @@
 import Phaser from 'phaser';
+import BaseScene from './BaseScene.js';
 import SoundManager from '../utils/SoundManager.js';
 import ParticleEffects from '../utils/ParticleEffects.js';
 import PowerUpManager, { PowerUpTypes } from '../utils/PowerUps.js';
 import ComboSystem from '../utils/ComboSystem.js';
 import TutorialSystem from '../utils/TutorialSystem.js';
 import { gameData } from '../utils/GameData.js';
+import { GameConfig } from '../config/GameConfig.js';
 
-export default class GitSurvivorScene extends Phaser.Scene {
+export default class GitSurvivorScene extends BaseScene {
     constructor() {
         super({ key: 'GitSurvivorScene' });
     }
@@ -87,24 +89,24 @@ export default class GitSurvivorScene extends Phaser.Scene {
             }
         });
 
-        // Spawn enemies
-        this.enemySpawnTimer = this.time.addEvent({
-            delay: 2000 / this.difficultyMult,
+        // Spawn enemies (tracked for automatic cleanup)
+        this.enemySpawnTimer = this.trackTimer(this.time.addEvent({
+            delay: GameConfig.GIT_SURVIVOR.ENEMY_SPAWN_DELAY / this.difficultyMult,
             callback: this.spawnEnemy,
             callbackScope: this,
             loop: true
-        });
+        }));
 
-        // Power-up spawning
-        this.powerUpTimer = this.time.addEvent({
-            delay: 10000,
+        // Power-up spawning (tracked for automatic cleanup)
+        this.powerUpTimer = this.trackTimer(this.time.addEvent({
+            delay: GameConfig.GIT_SURVIVOR.POWER_UP_SPAWN_DELAY,
             callback: () => {
                 const x = 150 + Math.random() * 500;
                 const y = 200 + Math.random() * 250;
                 this.powerUpManager.spawn(x, y);
             },
             loop: true
-        });
+        }));
 
         // Boss spawn every 30 enemies
         this.nextBossAt = 30;
@@ -720,22 +722,7 @@ export default class GitSurvivorScene extends Phaser.Scene {
         this.sounds.playGameOver();
     }
 
-    createBackButton() {
-        const backBtn = this.add.text(20, 20, '← Back to Menu', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            backgroundColor: '#333333',
-            padding: { x: 10, y: 5 }
-        });
-        backBtn.setInteractive({ useHandCursor: true });
-        backBtn.on('pointerdown', () => {
-            this.powerUpManager.cleanup();
-            this.scene.start('MainMenuScene');
-        });
-        backBtn.on('pointerover', () => backBtn.setStyle({ backgroundColor: '#555555' }));
-        backBtn.on('pointerout', () => backBtn.setStyle({ backgroundColor: '#333333' }));
-    }
+    // Use parent's createBackButton (removed duplicate)
 
     createHelpButton() {
         const width = this.cameras.main.width;
@@ -753,5 +740,21 @@ export default class GitSurvivorScene extends Phaser.Scene {
         });
         helpBtn.on('pointerover', () => helpBtn.setStyle({ backgroundColor: '#555555' }));
         helpBtn.on('pointerout', () => helpBtn.setStyle({ backgroundColor: '#333333' }));
+    }
+
+    /**
+     * Cleanup when scene shuts down
+     */
+    shutdown() {
+        // Track timers for automatic cleanup
+        if (this.enemySpawnTimer) this.enemySpawnTimer.remove();
+        if (this.powerUpTimer) this.powerUpTimer.remove();
+
+        // Cleanup managers
+        if (this.powerUpManager) this.powerUpManager.cleanup();
+        if (this.sounds) this.sounds.destroy();
+
+        // Call parent cleanup
+        super.shutdown();
     }
 }

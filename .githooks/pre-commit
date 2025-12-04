@@ -1,0 +1,62 @@
+#!/bin/sh
+#
+# GitGame Pre-commit Hook
+# Runs linting and tests before allowing commits
+#
+# To install this hook, run:
+#   git config core.hooksPath .githooks
+#
+
+echo "🔍 Running pre-commit checks..."
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+    echo "${RED}✗ npm not found. Please install Node.js and npm.${NC}"
+    exit 1
+fi
+
+# Check if node_modules exists
+if [ ! -d "node_modules" ]; then
+    echo "${YELLOW}⚠ node_modules not found. Running npm install...${NC}"
+    npm install
+fi
+
+# Run ESLint
+echo "📝 Running ESLint..."
+if ! npm run lint --silent; then
+    echo "${RED}✗ ESLint failed. Please fix linting errors before committing.${NC}"
+    echo "${YELLOW}💡 Tip: Run 'npm run lint:fix' to auto-fix some issues.${NC}"
+    exit 1
+fi
+echo "${GREEN}✓ ESLint passed${NC}"
+
+# Run tests
+echo "🧪 Running tests..."
+if ! npm test --silent; then
+    echo "${RED}✗ Tests failed. Please fix failing tests before committing.${NC}"
+    exit 1
+fi
+echo "${GREEN}✓ Tests passed${NC}"
+
+# Check for console.log statements (warning only, doesn't block commit)
+if git diff --cached --name-only | grep '\.js$' | xargs grep -n 'console\.log' 2>/dev/null; then
+    echo "${YELLOW}⚠ Warning: Found console.log statements in staged files.${NC}"
+    echo "${YELLOW}  Consider using the Logger utility instead.${NC}"
+    echo ""
+fi
+
+# Check for TODO/FIXME comments (informational only)
+TODO_COUNT=$(git diff --cached --name-only | grep '\.js$' | xargs grep -c 'TODO\|FIXME' 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+if [ "$TODO_COUNT" -gt 0 ]; then
+    echo "${YELLOW}ℹ Info: Found $TODO_COUNT TODO/FIXME comments in staged files.${NC}"
+    echo ""
+fi
+
+echo "${GREEN}✅ All pre-commit checks passed!${NC}"
+exit 0

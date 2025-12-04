@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
+import { logger } from '../utils/Logger.js';
+import PerformanceMonitor from '../utils/PerformanceMonitor.js';
+import InputManager from '../utils/InputManager.js';
+import SceneTransitionManager from '../utils/SceneTransitionManager.js';
+import { errorHandler } from '../utils/ErrorHandler.js';
 
 /**
  * BaseScene - Common functionality for all game scenes
@@ -8,6 +13,12 @@ import { gameData } from '../utils/GameData.js';
  * - Scene transitions
  * - Resource cleanup
  * - HUD elements
+ * - Optional utilities (InputManager, PerformanceMonitor, etc.)
+ *
+ * Enable utilities via config:
+ * constructor() {
+ *     super({ key: 'MyScene', enableInput: true, enablePerformance: true });
+ * }
  */
 export default class BaseScene extends Phaser.Scene {
     constructor(config) {
@@ -15,6 +26,66 @@ export default class BaseScene extends Phaser.Scene {
         this.timers = [];
         this.tweens = [];
         this.sounds = null;
+
+        // Store config for utility initialization
+        this.config = config;
+        this.enableInput = config.enableInput || false;
+        this.enablePerformance = config.enablePerformance || false;
+        this.enableTransitions = config.enableTransitions !== false; // Default true
+
+        // Utility instances
+        this.inputManager = null;
+        this.performanceMonitor = null;
+        this.transitionManager = null;
+    }
+
+    /**
+     * Initialize utilities based on config
+     * Call this in your scene's create() method: this.initUtilities()
+     */
+    initUtilities() {
+        try {
+            // Initialize InputManager if enabled
+            if (this.enableInput && !this.inputManager) {
+                this.inputManager = new InputManager(this);
+                logger.debug('BaseScene', 'InputManager initialized', { scene: this.scene.key });
+            }
+
+            // Initialize PerformanceMonitor if enabled
+            if (this.enablePerformance && !this.performanceMonitor) {
+                this.performanceMonitor = new PerformanceMonitor(this, {
+                    showOverlay: true,
+                    trackMemory: true
+                });
+                logger.debug('BaseScene', 'PerformanceMonitor initialized', { scene: this.scene.key });
+            }
+
+            // Initialize SceneTransitionManager if enabled
+            if (this.enableTransitions && !this.transitionManager) {
+                this.transitionManager = new SceneTransitionManager(this);
+                logger.debug('BaseScene', 'SceneTransitionManager initialized', { scene: this.scene.key });
+            }
+        } catch (error) {
+            logger.error('BaseScene', 'Error initializing utilities', { error });
+            errorHandler.handleError(error, 'BaseScene.initUtilities');
+        }
+    }
+
+    /**
+     * Update utilities (call this in your scene's update() method)
+     */
+    updateUtilities() {
+        try {
+            if (this.performanceMonitor) {
+                this.performanceMonitor.update();
+            }
+
+            if (this.inputManager) {
+                this.inputManager.update();
+            }
+        } catch (error) {
+            logger.error('BaseScene', 'Error updating utilities', { error });
+        }
     }
 
     /**
@@ -57,12 +128,19 @@ export default class BaseScene extends Phaser.Scene {
      * Create a smooth scene transition
      * @param {string} sceneName - Target scene name
      * @param {number} fadeTime - Fade duration in ms
+     * @param {Object} data - Optional data to pass to target scene
      */
-    transitionToScene(sceneName, fadeTime = 250) {
-        this.cameras.main.fade(fadeTime, 0, 0, 0);
-        this.time.delayedCall(fadeTime, () => {
-            this.scene.start(sceneName);
-        });
+    transitionToScene(sceneName, fadeTime = 250, data = {}) {
+        // Use SceneTransitionManager if available
+        if (this.transitionManager) {
+            this.transitionManager.quickFade(sceneName, data);
+        } else {
+            // Fallback to simple fade
+            this.cameras.main.fade(fadeTime, 0, 0, 0);
+            this.time.delayedCall(fadeTime, () => {
+                this.scene.start(sceneName, data);
+            });
+        }
     }
 
     /**
@@ -116,6 +194,17 @@ export default class BaseScene extends Phaser.Scene {
         // Clean up power-up manager if present
         if (this.powerUpManager && typeof this.powerUpManager.cleanup === 'function') {
             this.powerUpManager.cleanup();
+        }
+
+        // Clean up utilities
+        if (this.inputManager && typeof this.inputManager.destroy === 'function') {
+            this.inputManager.destroy();
+            this.inputManager = null;
+        }
+
+        if (this.performanceMonitor && typeof this.performanceMonitor.destroy === 'function') {
+            this.performanceMonitor.destroy();
+            this.performanceMonitor = null;
         }
 
         // Pause physics

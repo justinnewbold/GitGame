@@ -24,10 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive testing infrastructure with unit tests
   - GameConfig.js for centralized configuration constants
 - **Architecture:**
-  - BaseScene class for shared scene functionality
+  - BaseScene class for shared scene functionality with integrated utilities
+  - BaseScene now supports opt-in utilities (InputManager, PerformanceMonitor, SceneTransitionManager)
+  - initUtilities() and updateUtilities() helper methods for easy integration
+  - Enhanced cleanup system for proper resource management
   - Export/import functionality for game data backups
+- **CI/CD:**
+  - GitHub Actions workflow for automated testing, linting, and builds
+  - Pre-commit hooks for code quality enforcement
+  - Setup scripts for easy Git hook installation (Linux/Mac/Windows)
 - **Documentation:**
   - Enhanced README with setup guide, development tools, and contribution guidelines
+  - Comprehensive CONTRIBUTING.md with coding standards and workflows
+  - Git hooks documentation
   - Keyboard shortcuts reference
   - Project structure documentation
 

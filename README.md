@@ -103,6 +103,34 @@ npm run test:watch
 
 See `tests/README.md` for detailed testing documentation.
 
+### Git Hooks
+
+GitGame includes pre-commit hooks that automatically run linting and tests before commits to ensure code quality.
+
+**Setup:**
+```bash
+# Using npm script (recommended)
+npm run setup-hooks
+
+# Or manually
+git config core.hooksPath .githooks
+
+# Or using the setup script
+./scripts/setup-hooks.sh    # Linux/Mac
+scripts\setup-hooks.bat      # Windows
+```
+
+**What the pre-commit hook does:**
+- ✅ Runs ESLint to check code quality
+- ✅ Runs all tests to ensure nothing breaks
+- ⚠️  Warns about console.log statements (use Logger instead)
+- ℹ️  Reports TODO/FIXME count
+
+**Bypass hooks temporarily** (not recommended):
+```bash
+git commit --no-verify
+```
+
 ## 🔧 Development Tools
 
 ### Debug Mode

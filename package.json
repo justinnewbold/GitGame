@@ -11,7 +11,8 @@
     "test": "node tests/run-tests.js",
     "test:watch": "node --test --watch tests/**/*.test.js",
     "lint": "eslint src/**/*.js",
-    "lint:fix": "eslint src/**/*.js --fix"
+    "lint:fix": "eslint src/**/*.js --fix",
+    "setup-hooks": "git config core.hooksPath .githooks && echo 'Git hooks configured successfully!'"
   },
   "repository": {
     "type": "git",

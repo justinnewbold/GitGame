@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # GitGame Application
+  gitgame:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: gitgame-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.gitgame.description=GitGame - Survive the Code"
+      - "com.gitgame.version=1.0.0"
+
+  # Development mode with hot reload
+  gitgame-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: gitgame-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+    profiles:
+      - dev
+
+# Networks
+networks:
+  default:
+    name: gitgame-network
+
+# Volumes
+volumes:
+  node_modules:

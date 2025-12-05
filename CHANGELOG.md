@@ -77,6 +77,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Proper meta descriptions and keywords
   - Apple mobile web app tags
   - Theme color configuration
+- **Feature Flags System:**
+  - Feature flags for A/B testing and gradual rollouts
+  - URL parameter support for testing
+  - LocalStorage persistence
+  - Experiment percentage targeting
+  - Bulk flag updates
+- **Docker Support:**
+  - Multi-stage Dockerfile for production
+  - Development Dockerfile with hot reload
+  - Docker Compose configuration
+  - Health checks and automatic restarts
+- **Save Migration System:**
+  - Version-based save file migrations
+  - Automatic backup before migration
+  - Restore from backup on failure
+  - Validation and error handling
+- **Release Automation:**
+  - GitHub Actions release workflow
+  - Automatic changelog generation
+  - Docker image publishing to GHCR
+  - GitHub Pages deployment
+  - Build artifacts attached to releases
+- **SEO & Discovery:**
+  - robots.txt for search engine crawlers
+  - sitemap.xml with all pages
+  - humans.txt with credits and easter eggs
+  - Structured metadata
+- **Security:**
+  - security.txt for vulnerability reporting
+  - Security policy documentation
+  - Safe harbor for researchers
+- **PWA Icons:**
+  - SVG icon for all sizes
+  - HTML-based icon generator
+  - Script for batch generation
 - **Documentation:**
   - Enhanced README with setup guide, development tools, and contribution guidelines
   - Comprehensive CONTRIBUTING.md with coding standards and workflows
@@ -86,6 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - PWA installation guide
   - Testing guide with coverage instructions
   - E2E testing documentation
+  - Docker deployment guide
+  - Feature flags documentation
 
 ### Changed
 - Improved GameData with robust error handling and path validation

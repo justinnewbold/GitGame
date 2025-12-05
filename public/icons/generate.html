@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate PWA Icons</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #00ff00;
+        }
+        h1 { color: #00ff00; }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-family: monospace;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover { background: #00aa00; }
+        #preview { margin: 20px 0; }
+        canvas { margin: 10px; border: 2px solid #00ff00; }
+        .log { margin: 5px 0; color: #ffffff; }
+    </style>
+</head>
+<body>
+    <h1>🎨 GitGame PWA Icon Generator</h1>
+    <p>Click the button below to generate all PWA icons:</p>
+    <button onclick="generateAllIcons()">Generate All Icons</button>
+    <div id="preview"></div>
+    <div id="log"></div>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log';
+            entry.textContent = message;
+            logDiv.appendChild(entry);
+        }
+
+        function generateIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Background - Green gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#00ff00');
+            gradient.addColorStop(1, '#00aa00');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Border
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = size * 0.04;
+            ctx.strokeRect(size * 0.05, size * 0.05, size * 0.9, size * 0.9);
+
+            // Text - "GG"
+            ctx.fillStyle = '#000000';
+            ctx.font = `bold ${size * 0.5}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('GG', size / 2, size / 2);
+
+            return canvas;
+        }
+
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function generateAllIcons() {
+            log('🎨 Starting icon generation...');
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+
+            sizes.forEach(size => {
+                const canvas = generateIcon(size);
+                canvas.style.width = '100px';
+                canvas.style.height = '100px';
+                canvas.title = `${size}x${size}`;
+
+                // Add to preview
+                preview.appendChild(canvas);
+
+                // Auto-download
+                setTimeout(() => {
+                    downloadCanvas(canvas, `icon-${size}x${size}.png`);
+                    log(`✅ Generated: icon-${size}x${size}.png`);
+                }, 100 * sizes.indexOf(size));
+            });
+
+            setTimeout(() => {
+                log('');
+                log('✨ All icons generated!');
+                log('📁 Check your Downloads folder');
+                log('');
+                log('⚠️  Move these files to: public/icons/');
+            }, 100 * sizes.length + 500);
+        }
+
+        log('Ready to generate icons!');
+    </script>
+</body>
+</html>

@@ -3,9 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- Primary Meta Tags -->
+    <title>GitGame - Survive the Code!</title>
+    <meta name="title" content="GitGame - Survive the Code!">
+    <meta name="description" content="A hilarious survival game about coding struggles. Face merge conflicts, memory leaks, and production bugs. Only the best developers survive!">
+    <meta name="keywords" content="game, coding, developer, git, survival, phaser, javascript">
+    <meta name="author" content="GitGame">
+
+    <!-- Mobile Web App -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>GitGame - Survive the Code!</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GitGame">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#00ff00">
+    <meta name="msapplication-TileColor" content="#00ff00">
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-72x72.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gitgame.com/">
+    <meta property="og:title" content="GitGame - Survive the Code!">
+    <meta property="og:description" content="A hilarious survival game about coding struggles. Only the best developers survive!">
+    <meta property="og:image" content="/screenshots/gameplay-1.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://gitgame.com/">
+    <meta property="twitter:title" content="GitGame - Survive the Code!">
+    <meta property="twitter:description" content="A hilarious survival game about coding struggles. Only the best developers survive!">
+    <meta property="twitter:image" content="/screenshots/gameplay-1.png">
     <style>
         * {
             margin: 0;
@@ -31,7 +67,66 @@
     </style>
 </head>
 <body>
-    <div id="game-container"></div>
+    <div id="game-container" role="main" aria-label="Game Canvas Container"></div>
+
+    <!-- Loading indicator for accessibility -->
+    <div id="loading-indicator" aria-live="polite" aria-atomic="true" style="position: absolute; left: -9999px;">
+        Loading GitGame...
+    </div>
+
+    <!-- Game script -->
     <script type="module" src="/src/main.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        // Register service worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registered:', registration.scope);
+
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New service worker available
+                                    console.log('🔄 New version available! Reload to update.');
+                                    // You can show a notification to the user here
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.warn('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // Install prompt for PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            console.log('💾 App install prompt available');
+
+            // Optionally, show your own install button
+            // You can trigger the prompt with: deferredPrompt.prompt()
+        });
+
+        // Track successful installation
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ GitGame has been installed!');
+            deferredPrompt = null;
+        });
+    </script>
+
+    <!-- Accessibility: Skip to main content -->
+    <a href="#game-container" class="skip-link" style="position: absolute; left: -9999px; z-index: 999;">
+        Skip to game
+    </a>
 </body>
 </html>

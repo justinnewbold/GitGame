@@ -230,10 +230,11 @@ export default class TutorialSystem {
         const width = this.scene.cameras.main.width;
         const height = this.scene.cameras.main.height;
 
-        // Semi-transparent overlay (not interactive, just visual)
+        // Semi-transparent overlay that blocks interactions beneath it
         const overlay = this.scene.add.rectangle(0, 0, width, height, 0x000000, 0.7);
         overlay.setOrigin(0);
         overlay.setDepth(1000);
+        overlay.setInteractive(); // Block clicks to prevent interaction with game beneath
 
         // Tutorial box
         const boxWidth = 600;

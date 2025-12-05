@@ -1,0 +1,32 @@
+# GitGame - Robots.txt
+
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin/internal paths (if any)
+Disallow: /api/
+Disallow: /.well-known/
+
+# Sitemap
+Sitemap: https://gitgame.com/sitemap.xml
+
+# Crawl-delay (be nice to our server)
+Crawl-delay: 1
+
+# Specific bot instructions
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /

@@ -7,13 +7,23 @@ export default class SoundManager {
         this.enabled = true;
         this.musicVolume = 0.3;
         this.sfxVolume = 0.5;
+        // Create AudioContext once and reuse it to prevent memory leaks
+        this.audioContext = null;
+    }
+
+    // Get or create the AudioContext (singleton pattern)
+    getAudioContext() {
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return this.audioContext;
     }
 
     // Simple beep generator for retro feel
     playSound(type) {
         if (!this.enabled) return;
 
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioContext = this.getAudioContext();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
 
@@ -49,7 +59,7 @@ export default class SoundManager {
     playMelody(notes) {
         if (!this.enabled) return;
 
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioContext = this.getAudioContext();
         let startTime = audioContext.currentTime;
 
         notes.forEach((note, index) => {
@@ -105,5 +115,13 @@ export default class SoundManager {
     setVolume(sfx, music) {
         this.sfxVolume = sfx;
         this.musicVolume = music;
+    }
+
+    // Cleanup method to properly dispose of AudioContext
+    destroy() {
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            this.audioContext.close();
+        }
+        this.audioContext = null;
     }
 }

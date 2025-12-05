@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
+import { musicManager } from '../utils/MusicManager.js';
 
 export default class SettingsScene extends Phaser.Scene {
     constructor() {
@@ -39,6 +40,33 @@ export default class SettingsScene extends Phaser.Scene {
         this.createToggle('Music', yPos, 'musicEnabled', (enabled) => {
             gameData.data.settings.musicEnabled = enabled;
             gameData.save();
+
+            // Control music playback
+            if (enabled) {
+                musicManager.init();
+                musicManager.play('menu');
+            } else {
+                musicManager.stop();
+            }
+        });
+        yPos += 50;
+
+        // Volume sliders
+        this.createVolumeSlider('Master Volume', yPos, 'masterVolume', (volume) => {
+            gameData.data.settings.masterVolume = volume;
+            gameData.save();
+            // Apply to music
+            const musicVol = gameData.data.settings.musicVolume || 1.0;
+            musicManager.setVolume(volume * musicVol * 0.3);
+        });
+        yPos += 50;
+
+        this.createVolumeSlider('Music Volume', yPos, 'musicVolume', (volume) => {
+            gameData.data.settings.musicVolume = volume;
+            gameData.save();
+            // Apply to music
+            const masterVol = gameData.data.settings.masterVolume || 1.0;
+            musicManager.setVolume(masterVol * volume * 0.3);
         });
         yPos += 70;
 
@@ -126,6 +154,84 @@ export default class SettingsScene extends Phaser.Scene {
 
         toggleBg.on('pointerout', () => {
             toggleBg.setFillStyle(isEnabled ? 0x00aa00 : 0xaa0000, 0.8);
+        });
+    }
+
+    createVolumeSlider(label, y, settingKey, callback) {
+        const currentVolume = gameData.data.settings[settingKey] !== undefined ?
+            gameData.data.settings[settingKey] : 1.0;
+
+        // Label
+        this.add.text(250, y, label + ':', {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        });
+
+        // Slider track
+        const sliderWidth = 200;
+        const sliderX = 450;
+        const track = this.add.rectangle(sliderX, y, sliderWidth, 6, 0x333333);
+        track.setOrigin(0, 0.5);
+
+        // Filled portion
+        const fill = this.add.rectangle(sliderX, y, sliderWidth * currentVolume, 6, 0x00aaff);
+        fill.setOrigin(0, 0.5);
+
+        // Slider handle
+        const handle = this.add.circle(sliderX + (sliderWidth * currentVolume), y, 10, 0xffffff);
+        handle.setStrokeStyle(2, 0x00aaff);
+        handle.setInteractive({ useHandCursor: true, draggable: true });
+
+        // Volume percentage
+        const percentText = this.add.text(sliderX + sliderWidth + 20, y,
+            Math.round(currentVolume * 100) + '%', {
+            fontSize: '14px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        });
+        percentText.setOrigin(0, 0.5);
+
+        // Drag handler
+        let isDragging = false;
+
+        handle.on('dragstart', () => {
+            isDragging = true;
+            handle.setScale(1.2);
+        });
+
+        handle.on('drag', (pointer) => {
+            // Calculate new position
+            const relativeX = pointer.x - sliderX;
+            const newVolume = Phaser.Math.Clamp(relativeX / sliderWidth, 0, 1);
+
+            // Update visuals
+            handle.x = sliderX + (sliderWidth * newVolume);
+            fill.width = sliderWidth * newVolume;
+            percentText.setText(Math.round(newVolume * 100) + '%');
+
+            // Call callback
+            if (callback) callback(newVolume);
+        });
+
+        handle.on('dragend', () => {
+            isDragging = false;
+            handle.setScale(1.0);
+        });
+
+        // Click on track to set position
+        track.setInteractive({ useHandCursor: true });
+        track.on('pointerdown', (pointer) => {
+            if (!isDragging) {
+                const relativeX = pointer.x - sliderX;
+                const newVolume = Phaser.Math.Clamp(relativeX / sliderWidth, 0, 1);
+
+                handle.x = sliderX + (sliderWidth * newVolume);
+                fill.width = sliderWidth * newVolume;
+                percentText.setText(Math.round(newVolume * 100) + '%');
+
+                if (callback) callback(newVolume);
+            }
         });
     }
 

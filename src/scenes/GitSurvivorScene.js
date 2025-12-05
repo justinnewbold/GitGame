@@ -1,14 +1,24 @@
 import Phaser from 'phaser';
+import BaseScene from './BaseScene.js';
 import SoundManager from '../utils/SoundManager.js';
 import ParticleEffects from '../utils/ParticleEffects.js';
-import PowerUpManager from '../utils/PowerUps.js';
+import PowerUpManager, { PowerUpTypes } from '../utils/PowerUps.js';
 import ComboSystem from '../utils/ComboSystem.js';
 import TutorialSystem from '../utils/TutorialSystem.js';
 import { gameData } from '../utils/GameData.js';
+import { GameConfig } from '../config/GameConfig.js';
+import { musicManager } from '../utils/MusicManager.js';
+import { shareManager } from '../utils/ShareManager.js';
 
-export default class GitSurvivorScene extends Phaser.Scene {
+export default class GitSurvivorScene extends BaseScene {
     constructor() {
-        super({ key: 'GitSurvivorScene' });
+        super({
+            key: 'GitSurvivorScene',
+            enableInput: true,          // Enable InputManager with virtual joystick
+            enablePerformance: true,    // Enable performance monitoring
+            enableTransitions: true,    // Enable scene transitions
+            enableAchievements: true    // Enable achievement notifications
+        });
     }
 
     init() {
@@ -23,6 +33,7 @@ export default class GitSurvivorScene extends Phaser.Scene {
         this.enemiesKilled = 0;
         this.bossActive = false;
         this.powerUpsCollected = 0;
+        this.lastLevelUpAt = 0; // Track last level up to prevent multiple triggers
 
         // Difficulty multiplier
         const difficulty = gameData.getDifficulty();
@@ -33,9 +44,17 @@ export default class GitSurvivorScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
+        // Initialize BaseScene utilities (InputManager, PerformanceMonitor, etc.)
+        this.initUtilities();
+
         // Initialize systems
         this.sounds = new SoundManager(this);
+        this.applyAudioSettings(); // Apply audio settings from settings scene
         this.particles = new ParticleEffects(this);
+
+        // Start game music
+        musicManager.init();
+        musicManager.play('gitSurvivor');
         this.powerUpManager = new PowerUpManager(this);
         this.comboSystem = new ComboSystem(this);
         this.tutorial = new TutorialSystem(this);
@@ -69,7 +88,7 @@ export default class GitSurvivorScene extends Phaser.Scene {
         // HUD
         this.createHUD();
 
-        // Controls
+        // Controls - Use InputManager for unified input
         this.cursors = this.input.keyboard.createCursorKeys();
         this.wasd = {
             up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
@@ -79,31 +98,43 @@ export default class GitSurvivorScene extends Phaser.Scene {
         };
         this.spaceBar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-        // Mobile touch controls
+        // Setup InputManager bindings
+        if (this.inputManager) {
+            this.inputManager.bind('shoot', ['SPACE', 'MOUSE_LEFT']);
+        }
+
+        // Mobile: Virtual Joystick (only on touch devices)
+        this.setupMobileControls();
+
+        // Mobile touch controls for shooting
         this.input.on('pointerdown', (pointer) => {
+            // Don't shoot if touching the virtual joystick area
+            if (this.virtualJoystick && pointer.x < 150 && pointer.y > height - 150) {
+                return;
+            }
             if (pointer.y > 150) {
                 this.shootProjectile(pointer.x, pointer.y);
             }
         });
 
-        // Spawn enemies
-        this.enemySpawnTimer = this.time.addEvent({
-            delay: 2000 / this.difficultyMult,
+        // Spawn enemies (tracked for automatic cleanup)
+        this.enemySpawnTimer = this.trackTimer(this.time.addEvent({
+            delay: GameConfig.GIT_SURVIVOR.ENEMY_SPAWN_DELAY / this.difficultyMult,
             callback: this.spawnEnemy,
             callbackScope: this,
             loop: true
-        });
+        }));
 
-        // Power-up spawning
-        this.powerUpTimer = this.time.addEvent({
-            delay: 10000,
+        // Power-up spawning (tracked for automatic cleanup)
+        this.powerUpTimer = this.trackTimer(this.time.addEvent({
+            delay: GameConfig.GIT_SURVIVOR.POWER_UP_SPAWN_DELAY,
             callback: () => {
                 const x = 150 + Math.random() * 500;
                 const y = 200 + Math.random() * 250;
                 this.powerUpManager.spawn(x, y);
             },
             loop: true
-        });
+        }));
 
         // Boss spawn every 30 enemies
         this.nextBossAt = 30;
@@ -206,6 +237,9 @@ export default class GitSurvivorScene extends Phaser.Scene {
     }
 
     update() {
+        // Update utilities from BaseScene
+        this.updateUtilities();
+
         // Player movement with power-up multiplier
         const baseSpeed = 200;
         const speedMult = this.powerUpManager.getMultiplier('speed');
@@ -213,16 +247,25 @@ export default class GitSurvivorScene extends Phaser.Scene {
 
         this.player.body.setVelocity(0);
 
-        if (this.cursors.left.isDown || this.wasd.left.isDown) {
-            this.player.body.setVelocityX(-speed);
-        } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
-            this.player.body.setVelocityX(speed);
-        }
+        // Use InputManager if available (includes virtual joystick on mobile)
+        if (this.inputManager) {
+            const movement = this.inputManager.getMovementVector();
+            if (movement.x !== 0 || movement.y !== 0) {
+                this.player.body.setVelocity(movement.x * speed, movement.y * speed);
+            }
+        } else {
+            // Fallback to keyboard
+            if (this.cursors.left.isDown || this.wasd.left.isDown) {
+                this.player.body.setVelocityX(-speed);
+            } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
+                this.player.body.setVelocityX(speed);
+            }
 
-        if (this.cursors.up.isDown || this.wasd.up.isDown) {
-            this.player.body.setVelocityY(-speed);
-        } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
-            this.player.body.setVelocityY(speed);
+            if (this.cursors.up.isDown || this.wasd.up.isDown) {
+                this.player.body.setVelocityY(-speed);
+            } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
+                this.player.body.setVelocityY(speed);
+            }
         }
 
         // Trail effect when moving fast
@@ -261,9 +304,11 @@ export default class GitSurvivorScene extends Phaser.Scene {
             this.spawnBoss();
         }
 
-        // Level up every 10 kills
-        if (this.enemiesKilled > 0 && this.enemiesKilled % 10 === 0 && this.score % 10 === 0) {
+        // Level up every 10 kills (fixed logic to prevent multiple triggers)
+        const nextLevelUpAt = this.lastLevelUpAt + 10;
+        if (this.enemiesKilled >= nextLevelUpAt) {
             this.levelUp();
+            this.lastLevelUpAt = nextLevelUpAt;
         }
     }
 
@@ -379,8 +424,10 @@ export default class GitSurvivorScene extends Phaser.Scene {
     }
 
     updateEnemies() {
-        this.enemies.forEach((enemy, index) => {
-            if (!enemy.active) return;
+        // Use reverse iteration to safely remove enemies while iterating
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (!enemy.active) continue;
 
             const data = enemy.enemyData;
 
@@ -415,13 +462,13 @@ export default class GitSurvivorScene extends Phaser.Scene {
                     enemy.healthBarBg.destroy();
                 }
                 enemy.destroy();
-                this.enemies.splice(index, 1);
+                this.enemies.splice(i, 1);
 
                 if (data.isBoss) {
                     this.bossActive = false;
                 }
             }
-        });
+        }
     }
 
     enemyKilled(enemy, isBoss) {
@@ -500,11 +547,12 @@ export default class GitSurvivorScene extends Phaser.Scene {
     }
 
     updateProjectiles() {
-        this.projectiles.forEach((projectile, index) => {
-            if (!projectile.active) {
-                this.projectiles.splice(index, 1);
+        // Use reverse iteration to safely remove projectiles while iterating
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            if (!this.projectiles[i].active) {
+                this.projectiles.splice(i, 1);
             }
-        });
+        }
     }
 
     checkCollisions() {
@@ -586,37 +634,14 @@ export default class GitSurvivorScene extends Phaser.Scene {
     showAchievement(achievement) {
         if (!achievement) return;
 
-        const width = this.cameras.main.width;
-        const achievementBox = this.add.rectangle(width - 150, 100, 280, 60, 0x000000, 0.9);
-        achievementBox.setStrokeStyle(2, 0xffaa00);
-
-        const achievementText = this.add.text(width - 150, 90, `🏆 Achievement Unlocked!`, {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: '#ffaa00',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-
-        const achievementName = this.add.text(width - 150, 110, `${achievement.icon} ${achievement.name}`, {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff'
-        }).setOrigin(0.5);
-
-        this.sounds.playSound('upgrade');
-
-        this.time.delayedCall(3000, () => {
-            this.tweens.add({
-                targets: [achievementBox, achievementText, achievementName],
-                alpha: 0,
-                duration: 500,
-                onComplete: () => {
-                    achievementBox.destroy();
-                    achievementText.destroy();
-                    achievementName.destroy();
-                }
+        // Use the new AchievementNotification system from BaseScene
+        if (this.achievementNotification) {
+            this.achievementNotification.show({
+                title: achievement.name,
+                description: achievement.description,
+                icon: achievement.icon
             });
-        });
+        }
     }
 
     updateHUD() {
@@ -697,7 +722,50 @@ export default class GitSurvivorScene extends Phaser.Scene {
             color: '#ffaa00'
         }).setOrigin(0.5);
 
-        const restartBtn = this.add.text(width / 2, height / 2 + 130, '[ Click to Return to Menu ]', {
+        // Share button
+        const shareBtn = this.add.text(width / 2, height / 2 + 130, '📤 Share Score', {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#00aaff',
+            backgroundColor: '#1a1a2e',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5);
+        shareBtn.setInteractive({ useHandCursor: true });
+        shareBtn.on('pointerdown', async () => {
+            const difficulty = gameData.getDifficulty();
+            const result = await shareManager.shareScore('Git Survivor', this.score, {
+                difficulty: difficulty,
+                enemiesKilled: this.enemiesKilled
+            });
+
+            if (result.success) {
+                // Show success feedback
+                const feedback = this.add.text(width / 2, height / 2 + 160,
+                    result.method === 'clipboard' ? '✓ Copied to clipboard!' : '✓ Shared!', {
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    color: '#00ff00'
+                }).setOrigin(0.5);
+
+                this.tweens.add({
+                    targets: feedback,
+                    alpha: 0,
+                    duration: 2000,
+                    delay: 1000,
+                    onComplete: () => feedback.destroy()
+                });
+            }
+        });
+
+        shareBtn.on('pointerover', () => {
+            shareBtn.setStyle({ backgroundColor: '#2a2a3e' });
+        });
+
+        shareBtn.on('pointerout', () => {
+            shareBtn.setStyle({ backgroundColor: '#1a1a2e' });
+        });
+
+        const restartBtn = this.add.text(width / 2, height / 2 + 180, '[ Click to Return to Menu ]', {
             fontSize: '16px',
             fontFamily: 'monospace',
             color: '#ffffff'
@@ -714,22 +782,7 @@ export default class GitSurvivorScene extends Phaser.Scene {
         this.sounds.playGameOver();
     }
 
-    createBackButton() {
-        const backBtn = this.add.text(20, 20, '← Back to Menu', {
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            backgroundColor: '#333333',
-            padding: { x: 10, y: 5 }
-        });
-        backBtn.setInteractive({ useHandCursor: true });
-        backBtn.on('pointerdown', () => {
-            this.powerUpManager.cleanup();
-            this.scene.start('MainMenuScene');
-        });
-        backBtn.on('pointerover', () => backBtn.setStyle({ backgroundColor: '#555555' }));
-        backBtn.on('pointerout', () => backBtn.setStyle({ backgroundColor: '#333333' }));
-    }
+    // Use parent's createBackButton (removed duplicate)
 
     createHelpButton() {
         const width = this.cameras.main.width;
@@ -747,5 +800,77 @@ export default class GitSurvivorScene extends Phaser.Scene {
         });
         helpBtn.on('pointerover', () => helpBtn.setStyle({ backgroundColor: '#555555' }));
         helpBtn.on('pointerout', () => helpBtn.setStyle({ backgroundColor: '#333333' }));
+    }
+
+    /**
+     * Setup mobile controls (virtual joystick)
+     */
+    setupMobileControls() {
+        // Only create virtual joystick on touch devices
+        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        if (isMobile && this.inputManager) {
+            const height = this.cameras.main.height;
+
+            // Create virtual joystick in bottom-left corner
+            this.virtualJoystick = this.inputManager.createVirtualJoystick(
+                75,           // x position
+                height - 75,  // y position (bottom)
+                60            // radius
+            );
+
+            // Add visual feedback
+            if (this.virtualJoystick) {
+                this.virtualJoystick.base.setDepth(1000);
+                this.virtualJoystick.thumb.setDepth(1001);
+            }
+        }
+    }
+
+    /**
+     * Apply audio settings from settings scene
+     */
+    applyAudioSettings() {
+        try {
+            const settings = gameData.getStat('settings');
+
+            if (settings && this.sounds) {
+                // Apply volume settings
+                const masterVolume = settings.masterVolume !== undefined ? settings.masterVolume : 1.0;
+                const sfxVolume = settings.sfxVolume !== undefined ? settings.sfxVolume : 1.0;
+
+                // Calculate final volume
+                const finalVolume = masterVolume * sfxVolume;
+
+                this.sounds.setVolume(finalVolume);
+
+                // Apply enabled/disabled
+                const soundEnabled = settings.soundEnabled !== undefined ? settings.soundEnabled : true;
+                this.sounds.setEnabled(soundEnabled);
+            }
+        } catch (error) {
+            console.warn('Could not apply audio settings', error);
+        }
+    }
+
+    /**
+     * Cleanup when scene shuts down
+     */
+    shutdown() {
+        // Track timers for automatic cleanup
+        if (this.enemySpawnTimer) this.enemySpawnTimer.remove();
+        if (this.powerUpTimer) this.powerUpTimer.remove();
+
+        // Cleanup managers
+        if (this.powerUpManager) this.powerUpManager.cleanup();
+        if (this.sounds) this.sounds.destroy();
+
+        // Cleanup virtual joystick
+        if (this.virtualJoystick) {
+            this.virtualJoystick = null;
+        }
+
+        // Call parent cleanup
+        super.shutdown();
     }
 }

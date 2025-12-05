@@ -1,0 +1,37 @@
+Contact: https://github.com/justinnewbold/GitGame/security/advisories/new
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://gitgame.com/.well-known/security.txt
+
+# Security Policy
+
+If you discover a security vulnerability in GitGame, please report it responsibly:
+
+1. DO NOT create a public GitHub issue
+2. Use the GitHub Security Advisories feature (link above)
+3. Or email the maintainers privately
+
+We take all security reports seriously and will respond promptly.
+
+# Scope
+
+In-scope:
+- Client-side vulnerabilities (XSS, CSRF, etc.)
+- Data handling and privacy issues
+- Authentication/authorization issues (if implemented)
+- Dependency vulnerabilities
+
+Out-of-scope:
+- Social engineering
+- Physical attacks
+- DoS/DDoS attacks
+- Issues in third-party dependencies (report to them directly)
+
+# Safe Harbor
+
+We support safe harbor for security researchers who:
+- Make a good faith effort to avoid privacy violations and data destruction
+- Only interact with test accounts you own or with explicit permission
+- Do not exploit the vulnerability beyond what is necessary to demonstrate it
+
+Thank you for helping keep GitGame and our users safe!

@@ -51,6 +51,9 @@ export default class GameData {
             settings: {
                 soundEnabled: true,
                 musicEnabled: true,
+                masterVolume: 1.0,
+                musicVolume: 1.0,
+                sfxVolume: 1.0,
                 difficulty: 'normal'
             }
         };

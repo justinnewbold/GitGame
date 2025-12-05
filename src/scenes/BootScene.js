@@ -74,6 +74,13 @@ export default class BootScene extends Phaser.Scene {
     }
 
     create() {
+        // Create a simple pixel texture for particles
+        const graphics = this.add.graphics();
+        graphics.fillStyle(0xffffff);
+        graphics.fillRect(0, 0, 2, 2);
+        graphics.generateTexture('pixel', 2, 2);
+        graphics.destroy();
+
         // Move to main menu after a short delay
         this.time.delayedCall(500, () => {
             this.scene.start('MainMenuScene');

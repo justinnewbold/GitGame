@@ -4,6 +4,8 @@ import { logger } from '../utils/Logger.js';
 import PerformanceMonitor from '../utils/PerformanceMonitor.js';
 import InputManager from '../utils/InputManager.js';
 import SceneTransitionManager from '../utils/SceneTransitionManager.js';
+import AchievementNotification from '../utils/AchievementNotification.js';
+import HelpOverlay from '../utils/HelpOverlay.js';
 import { errorHandler } from '../utils/ErrorHandler.js';
 
 /**
@@ -32,11 +34,16 @@ export default class BaseScene extends Phaser.Scene {
         this.enableInput = config.enableInput || false;
         this.enablePerformance = config.enablePerformance || false;
         this.enableTransitions = config.enableTransitions !== false; // Default true
+        this.enableAchievements = config.enableAchievements !== false; // Default true
+        this.enableHelp = config.enableHelp !== false; // Default true
+        this.helpConfig = config.helpConfig || {}; // Custom help config
 
         // Utility instances
         this.inputManager = null;
         this.performanceMonitor = null;
         this.transitionManager = null;
+        this.achievementNotification = null;
+        this.helpOverlay = null;
     }
 
     /**
@@ -64,6 +71,18 @@ export default class BaseScene extends Phaser.Scene {
             if (this.enableTransitions && !this.transitionManager) {
                 this.transitionManager = new SceneTransitionManager(this);
                 logger.debug('BaseScene', 'SceneTransitionManager initialized', { scene: this.scene.key });
+            }
+
+            // Initialize AchievementNotification if enabled
+            if (this.enableAchievements && !this.achievementNotification) {
+                this.achievementNotification = new AchievementNotification(this);
+                logger.debug('BaseScene', 'AchievementNotification initialized', { scene: this.scene.key });
+            }
+
+            // Initialize HelpOverlay if enabled
+            if (this.enableHelp && !this.helpOverlay) {
+                this.helpOverlay = new HelpOverlay(this, this.helpConfig);
+                logger.debug('BaseScene', 'HelpOverlay initialized', { scene: this.scene.key });
             }
         } catch (error) {
             logger.error('BaseScene', 'Error initializing utilities', { error });

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
+import { musicManager } from '../utils/MusicManager.js';
 
 export default class MainMenuScene extends Phaser.Scene {
     constructor() {
@@ -7,6 +8,11 @@ export default class MainMenuScene extends Phaser.Scene {
     }
 
     create() {
+        // Initialize and start menu music
+        musicManager.init();
+        musicManager.play('menu');
+
+
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 

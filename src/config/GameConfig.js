@@ -32,8 +32,9 @@ export const GameConfig = {
         GAME_AREA_HEIGHT: 400
     },
 
-    // Enemy Types
+    // Enemy Types (18 total - variety is key!)
     ENEMY_TYPES: [
+        // Original 8
         { name: '🐛 Bug', color: 0xff00ff, health: 30, speed: 80, reward: 10 },
         { name: '⚠️ Merge Conflict', color: 0xff0000, health: 40, speed: 60, reward: 15 },
         { name: '💣 Memory Leak', color: 0xffff00, health: 50, speed: 40, reward: 20 },
@@ -41,7 +42,19 @@ export const GameConfig = {
         { name: '🔓 Null Pointer', color: 0xff6600, health: 35, speed: 70, reward: 18 },
         { name: '🌊 Race Condition', color: 0x6600ff, health: 45, speed: 120, reward: 25 },
         { name: '💀 Segfault', color: 0xff0000, health: 60, speed: 50, reward: 30 },
-        { name: '🐞 Heisenbug', color: 0xff00ff, health: 40, speed: 150, reward: 35 }
+        { name: '🐞 Heisenbug', color: 0xff00ff, health: 40, speed: 150, reward: 35 },
+
+        // NEW: 10 additional enemy types with unique mechanics
+        { name: '🔁 Recursion Bug', color: 0xff0099, health: 200, speed: 50, reward: 50, splits: true, splitCount: 2 }, // Splits into 2 smaller bugs when killed
+        { name: '📚 Technical Debt', color: 0x996633, health: 500, speed: 30, reward: 80, slowsPlayer: true, slowAmount: 0.5 }, // Slows player movement by 50% when nearby
+        { name: '🔥 Prod Incident', color: 0xff3300, health: 50, speed: 120, reward: 60, explodesOnDeath: true, explosionRadius: 100 }, // Explodes and damages player if too close
+        { name: '🕷️ Spider Bug', color: 0x660099, health: 80, speed: 90, reward: 40, spawnsWeb: true }, // Leaves slowing web patches
+        { name: '⚡ Async Hell', color: 0xffff66, health: 120, speed: 150, reward: 70, teleports: true, teleportChance: 0.3 }, // Randomly teleports around
+        { name: '🧟 Zombie Process', color: 0x669900, health: 300, speed: 40, reward: 65, resurrectsOnce: true }, // Comes back to life once
+        { name: '🎯 Dependency', color: 0x00cc99, health: 60, speed: 70, reward: 45, callsReinforcements: true }, // Spawns 2 smaller bugs when damaged
+        { name: '⛓️ Deadlock', color: 0x666666, health: 150, speed: 20, reward: 85, freezesPlayerOnHit: true, freezeDuration: 2000 }, // Freezes player for 2s on collision
+        { name: '🌀 Circular Ref', color: 0x9933ff, health: 90, speed: 100, reward: 55, orbitsPlayer: true, orbitRadius: 150 }, // Orbits player at distance
+        { name: '💥 Buffer Overflow', color: 0xff6600, health: 70, speed: 110, reward: 50, growsOverTime: true, maxSize: 3 } // Grows bigger and stronger over time
     ],
 
     // Boss Types

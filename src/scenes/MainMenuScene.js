@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
 import { musicManager } from '../utils/MusicManager.js';
+import { gitSurvivorStateManager } from '../utils/GameStateManager.js';
 
 export default class MainMenuScene extends Phaser.Scene {
     constructor() {
@@ -56,8 +57,22 @@ export default class MainMenuScene extends Phaser.Scene {
         });
         quote.setOrigin(0.5);
 
+        // Continue button (if saved game exists)
+        const hasSave = gitSurvivorStateManager.hasSavedState();
+        let buttonY = 220;
+
+        if (hasSave) {
+            const timeSince = gitSurvivorStateManager.formatTimeSinceSave();
+            this.createGameModeButton(width / 2, buttonY,
+                '▶️ Continue Game',
+                `Resume your game (${timeSince})`,
+                'GitSurvivorScene',
+                0x00aa00,
+                true); // Continue mode
+            buttonY += 80;
+        }
+
         // Game mode buttons
-        const buttonY = 220;
         const buttonSpacing = 80;
 
         this.createGameModeButton(width / 2, buttonY,
@@ -222,7 +237,7 @@ export default class MainMenuScene extends Phaser.Scene {
         }
     }
 
-    createGameModeButton(x, y, title, description, sceneName, color) {
+    createGameModeButton(x, y, title, description, sceneName, color, isContinue = false) {
         // Button background
         const buttonWidth = 600;
         const buttonHeight = 60;
@@ -277,7 +292,8 @@ export default class MainMenuScene extends Phaser.Scene {
             // Transition to the selected game mode
             this.cameras.main.fade(250, 0, 0, 0);
             this.time.delayedCall(250, () => {
-                this.scene.start(sceneName);
+                // Pass continue flag if this is a continue button
+                this.scene.start(sceneName, { continue: isContinue });
             });
         });
 

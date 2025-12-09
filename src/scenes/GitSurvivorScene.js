@@ -9,6 +9,9 @@ import { gameData } from '../utils/GameData.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { musicManager } from '../utils/MusicManager.js';
 import { shareManager } from '../utils/ShareManager.js';
+import { gitSurvivorStateManager, AutoSaveManager } from '../utils/GameStateManager.js';
+import AnimationPresets from '../utils/AnimationPresets.js';
+import { PhaserSpritePool } from '../utils/ObjectPool.js';
 
 export default class GitSurvivorScene extends BaseScene {
     constructor() {
@@ -21,7 +24,10 @@ export default class GitSurvivorScene extends BaseScene {
         });
     }
 
-    init() {
+    init(data) {
+        // Check if we should continue from save
+        this.shouldContinue = data && data.continue;
+
         // Game state
         this.playerHealth = 100;
         this.playerSanity = 100;
@@ -51,6 +57,7 @@ export default class GitSurvivorScene extends BaseScene {
         this.sounds = new SoundManager(this);
         this.applyAudioSettings(); // Apply audio settings from settings scene
         this.particles = new ParticleEffects(this);
+        this.animations = new AnimationPresets(this);
 
         // Start game music
         musicManager.init();
@@ -58,6 +65,125 @@ export default class GitSurvivorScene extends BaseScene {
         this.powerUpManager = new PowerUpManager(this);
         this.comboSystem = new ComboSystem(this);
         this.tutorial = new TutorialSystem(this);
+
+        // Initialize object pool for projectiles
+        this.projectilePool = new PhaserSpritePool(this, null, 50);
+        // Override create function to make circles instead of sprites
+        this.projectilePool.createFn = () => {
+            const projectile = this.add.circle(0, 0, 5, 0x00ff00);
+            this.physics.add.existing(projectile);
+            projectile.setActive(false);
+            projectile.setVisible(false);
+            projectile.pooled = true;
+            projectile.poolActive = false;
+            return projectile;
+        };
+        // Pre-create pool
+        for (let i = 0; i < 50; i++) {
+            this.projectilePool.pool.push(this.projectilePool.createFn());
+        }
+
+        // Auto-save manager (saves every 30 seconds)
+        this.autoSaveManager = new AutoSaveManager(this, gitSurvivorStateManager, 30000);
+        this.autoSaveManager.start();
+
+        // DEV TOOLS: Expose methods to console for testing
+        if (typeof window !== 'undefined') {
+            window.devTools = {
+                // Spawn specific enemy type
+                spawnEnemy: (type) => {
+                    const enemyTypes = GameConfig.ENEMY_TYPES;
+                    const enemyType = enemyTypes.find(e => e.name.toLowerCase().includes(type.toLowerCase()));
+                    if (enemyType) {
+                        this.spawnEnemy(enemyType);
+                        console.log(`✓ Spawned: ${enemyType.name}`);
+                    } else {
+                        console.log('❌ Enemy types:', enemyTypes.map(e => e.name).join(', '));
+                    }
+                },
+
+                // Spawn boss
+                spawnBoss: () => {
+                    this.spawnBoss();
+                    console.log('✓ Boss spawned!');
+                },
+
+                // Add power-up
+                addPowerUp: (type) => {
+                    const powerUpType = Object.values(PowerUpTypes).find(p =>
+                        p.id.toLowerCase() === type.toLowerCase()
+                    );
+                    if (powerUpType) {
+                        this.powerUpManager.activate(powerUpType.id);
+                        console.log(`✓ Activated: ${powerUpType.name}`);
+                    } else {
+                        console.log('❌ Power-up types:', Object.values(PowerUpTypes).map(p => p.id).join(', '));
+                    }
+                },
+
+                // Set level
+                setLevel: (n) => {
+                    this.level = n;
+                    this.updateHUD();
+                    console.log(`✓ Level set to ${n}`);
+                },
+
+                // Set score
+                setScore: (n) => {
+                    this.score = n;
+                    this.updateHUD();
+                    console.log(`✓ Score set to ${n}`);
+                },
+
+                // God mode
+                godMode: () => {
+                    this.playerHealth = 99999;
+                    this.player.invincible = true;
+                    this.updateHUD();
+                    console.log('✓ God mode activated!');
+                },
+
+                // Kill all enemies
+                killAll: () => {
+                    this.enemies.forEach(e => e.destroy());
+                    this.enemies = [];
+                    console.log('✓ All enemies destroyed');
+                },
+
+                // Get object pool stats
+                poolStats: () => {
+                    const stats = this.projectilePool.getStats();
+                    console.log('📊 Object Pool Stats:', stats);
+                },
+
+                // List available commands
+                help: () => {
+                    console.log(`
+🛠️ DEV TOOLS AVAILABLE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+devTools.spawnEnemy('bug')     - Spawn specific enemy
+devTools.spawnBoss()            - Spawn a boss
+devTools.addPowerUp('coffee')   - Add power-up
+devTools.setLevel(10)           - Set player level
+devTools.setScore(1000)         - Set score
+devTools.godMode()              - Enable invincibility
+devTools.killAll()              - Kill all enemies
+devTools.poolStats()            - Show object pool stats
+devTools.help()                 - Show this help
+
+EXAMPLES:
+  devTools.spawnEnemy('merge')    // Merge Conflict
+  devTools.spawnEnemy('recursion') // Recursion Bug
+  devTools.addPowerUp('coffee')    // Coffee boost
+  devTools.addPowerUp('darkmode')  // Invincibility
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    `);
+                }
+            };
+
+            // Show help on first load
+            console.log('🎮 GitGame Dev Tools loaded! Type devTools.help() for commands');
+        }
 
         // Background
         this.add.rectangle(0, 0, width, height, 0x0a0a1a).setOrigin(0);
@@ -518,8 +644,12 @@ export default class GitSurvivorScene extends BaseScene {
     }
 
     shootProjectile(targetX, targetY) {
-        const projectile = this.add.circle(this.player.x, this.player.y, 5, 0x00ff00);
-        this.physics.add.existing(projectile);
+        // Use object pool for better performance
+        const projectile = this.projectilePool.acquire();
+        projectile.setPosition(this.player.x, this.player.y);
+        projectile.setActive(true);
+        projectile.setVisible(true);
+        if (projectile.body) projectile.body.enable = true;
 
         const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, targetX, targetY);
         const speed = 400;
@@ -538,11 +668,11 @@ export default class GitSurvivorScene extends BaseScene {
         // Sound
         this.sounds.playSound('shoot');
 
-        // Destroy after 2 seconds
+        // Return to pool after 2 seconds
         this.time.delayedCall(2000, () => {
             const idx = this.projectiles.indexOf(projectile);
             if (idx > -1) this.projectiles.splice(idx, 1);
-            projectile.destroy();
+            this.projectilePool.release(projectile);
         });
     }
 

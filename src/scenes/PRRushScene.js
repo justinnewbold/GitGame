@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import SoundManager from '../utils/SoundManager.js';
 import ParticleEffects from '../utils/ParticleEffects.js';
 import { gameData } from '../utils/GameData.js';
+import { simplifiedProgression } from '../utils/SimplifiedProgression.js';
 
 export default class PRRushScene extends Phaser.Scene {
     constructor() {
@@ -511,7 +512,12 @@ export default class PRRushScene extends Phaser.Scene {
 
         // Save stats
         gameData.updateStat('prRush.bestAccuracy', accuracy, 'max');
-        gameData.updateStat('totalScore', this.prsReviewed * 10, 'increment');
+        const score = this.prsReviewed * 10;
+        gameData.updateStat('totalScore', score, 'increment');
+
+        // Award XP
+        const xpEarned = simplifiedProgression.calculateXPFromScore(score, 'PRRush');
+        const levelUpResult = simplifiedProgression.addXP(xpEarned);
 
         // Check for perfect review achievement
         if (accuracy === 100 && this.prsReviewed >= 5) {
@@ -557,6 +563,26 @@ export default class PRRushScene extends Phaser.Scene {
             color: '#ffaa00'
         }).setOrigin(0.5);
 
+        // Display XP earned
+        this.add.text(width / 2, height / 2 + 95, `+${xpEarned} XP Earned!`, {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#00ffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Display level up if it happened
+        let yOffset = 120;
+        if (levelUpResult.levelsGained.length > 0) {
+            this.add.text(width / 2, height / 2 + yOffset, `🎉 LEVEL UP! You are now Level ${levelUpResult.newLevel}! 🎉`, {
+                fontSize: '18px',
+                fontFamily: 'monospace',
+                color: '#ffff00',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+            yOffset += 30;
+        }
+
         const funnyMessages = [
             '🏆 "You survived PR hell!"',
             '😅 "At least you tried..."',
@@ -565,14 +591,14 @@ export default class PRRushScene extends Phaser.Scene {
             '☕ "Time for coffee break!"'
         ];
 
-        this.add.text(width / 2, height / 2 + 110, Phaser.Utils.Array.GetRandom(funnyMessages), {
+        this.add.text(width / 2, height / 2 + yOffset + 15, Phaser.Utils.Array.GetRandom(funnyMessages), {
             fontSize: '14px',
             fontFamily: 'monospace',
             color: '#888888',
             fontStyle: 'italic'
         }).setOrigin(0.5);
 
-        const menuBtn = this.add.text(width / 2, height / 2 + 160, '[ Return to Menu ]', {
+        const menuBtn = this.add.text(width / 2, height / 2 + yOffset + 55, '[ Return to Menu ]', {
             fontSize: '16px',
             fontFamily: 'monospace',
             color: '#ffffff'

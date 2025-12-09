@@ -5,6 +5,7 @@ import PowerUpManager from '../utils/PowerUps.js';
 import ComboSystem from '../utils/ComboSystem.js';
 import TutorialSystem from '../utils/TutorialSystem.js';
 import { gameData } from '../utils/GameData.js';
+import { simplifiedProgression } from '../utils/SimplifiedProgression.js';
 
 export default class GitSurvivorScene extends Phaser.Scene {
     constructor() {
@@ -647,6 +648,10 @@ export default class GitSurvivorScene extends Phaser.Scene {
         gameData.updateStat('gitSurvivor.highScore', this.score, 'max');
         gameData.updateStat('totalScore', this.score, 'increment');
 
+        // Award XP
+        const xpEarned = simplifiedProgression.calculateXPFromScore(this.score, 'GitSurvivor');
+        const levelUpResult = simplifiedProgression.addXP(xpEarned);
+
         // Cleanup
         this.powerUpManager.cleanup();
 
@@ -697,7 +702,27 @@ export default class GitSurvivorScene extends Phaser.Scene {
             color: '#ffaa00'
         }).setOrigin(0.5);
 
-        const restartBtn = this.add.text(width / 2, height / 2 + 130, '[ Click to Return to Menu ]', {
+        // Display XP earned
+        this.add.text(width / 2, height / 2 + 120, `+${xpEarned} XP Earned!`, {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#00ffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Display level up if it happened
+        let yOffset = 145;
+        if (levelUpResult.levelsGained.length > 0) {
+            this.add.text(width / 2, height / 2 + yOffset, `🎉 LEVEL UP! You are now Level ${levelUpResult.newLevel}! 🎉`, {
+                fontSize: '18px',
+                fontFamily: 'monospace',
+                color: '#ffff00',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+            yOffset += 30;
+        }
+
+        const restartBtn = this.add.text(width / 2, height / 2 + yOffset + 15, '[ Click to Return to Menu ]', {
             fontSize: '16px',
             fontFamily: 'monospace',
             color: '#ffffff'

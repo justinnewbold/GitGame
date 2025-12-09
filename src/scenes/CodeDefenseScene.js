@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import SoundManager from '../utils/SoundManager.js';
 import ParticleEffects from '../utils/ParticleEffects.js';
 import { gameData } from '../utils/GameData.js';
+import { simplifiedProgression } from '../utils/SimplifiedProgression.js';
 
 export default class CodeDefenseScene extends Phaser.Scene {
     constructor() {
@@ -560,7 +561,12 @@ export default class CodeDefenseScene extends Phaser.Scene {
 
         // Save stats
         gameData.updateStat('codeDefense.highWave', this.wave - 1, 'max');
-        gameData.updateStat('totalScore', this.wave * 100, 'increment');
+        const score = this.wave * 100;
+        gameData.updateStat('totalScore', score, 'increment');
+
+        // Award XP
+        const xpEarned = simplifiedProgression.calculateXPFromScore(score, 'CodeDefense');
+        const levelUpResult = simplifiedProgression.addXP(xpEarned);
 
         const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.8).setOrigin(0);
 
@@ -600,7 +606,27 @@ export default class CodeDefenseScene extends Phaser.Scene {
             color: '#ffaa00'
         }).setOrigin(0.5);
 
-        const restartBtn = this.add.text(width / 2, height / 2 + 100, '[ Return to Menu ]', {
+        // Display XP earned
+        this.add.text(width / 2, height / 2 + 90, `+${xpEarned} XP Earned!`, {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#00ffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Display level up if it happened
+        let yOffset = 115;
+        if (levelUpResult.levelsGained.length > 0) {
+            this.add.text(width / 2, height / 2 + yOffset, `🎉 LEVEL UP! You are now Level ${levelUpResult.newLevel}! 🎉`, {
+                fontSize: '18px',
+                fontFamily: 'monospace',
+                color: '#ffff00',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+            yOffset += 30;
+        }
+
+        const restartBtn = this.add.text(width / 2, height / 2 + yOffset + 10, '[ Return to Menu ]', {
             fontSize: '16px',
             fontFamily: 'monospace',
             color: '#ffffff'

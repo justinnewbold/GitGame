@@ -132,14 +132,7 @@ export default class StatsScene extends Phaser.Scene {
         this.createStatLine('PRs Reviewed', stats.prRush.prsReviewed, y2, 500);
         y2 += 40;
 
-        // Dev Commander Stats
-        this.createStatSection('⚔️ Dev Commander', y2, 500);
-        y2 += 40;
-        this.createStatLine('Games Played', stats.devCommander.gamesPlayed, y2, 500);
-        y2 += 25;
-        this.createStatLine('Max Sprints', stats.devCommander.maxSprints, y2, 500);
-        y2 += 25;
-        this.createStatLine('Tasks Completed', stats.devCommander.tasksCompleted, y2, 500);
+        // REMOVED: Dev Commander Stats (game mode hidden for simplification)
     }
 
     showAchievements() {
@@ -252,17 +245,8 @@ export default class StatsScene extends Phaser.Scene {
                 title: '⏰ PR Rush Total PRs',
                 value: stats.prRush.prsReviewed,
                 icon: '📝'
-            },
-            {
-                title: '⚔️ Dev Commander Max Sprints',
-                value: stats.devCommander.maxSprints,
-                icon: '🏃'
-            },
-            {
-                title: '⚔️ Dev Commander Total Tasks',
-                value: stats.devCommander.tasksCompleted,
-                icon: '✅'
             }
+            // REMOVED: Dev Commander records (game mode hidden for simplification)
         ];
 
         records.forEach((record, index) => {

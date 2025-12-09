@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
+import { simplifiedProgression } from '../utils/SimplifiedProgression.js';
 
 export default class MainMenuScene extends Phaser.Scene {
     constructor() {
@@ -33,7 +34,40 @@ export default class MainMenuScene extends Phaser.Scene {
         });
         subtitle.setOrigin(0.5);
 
-        // Funny quote
+        // Developer Level Display
+        const levelInfo = simplifiedProgression.getLevelInfo();
+        const levelDisplay = this.add.text(width / 2, 160,
+            `${levelInfo.title} • Level ${levelInfo.level}`, {
+            fontSize: '18px',
+            fontFamily: 'monospace',
+            color: '#00ffff',
+            fontStyle: 'bold'
+        });
+        levelDisplay.setOrigin(0.5);
+
+        // XP Progress Bar
+        const barWidth = 300;
+        const barHeight = 8;
+        const barX = width / 2 - barWidth / 2;
+        const barY = 185;
+
+        // Background bar
+        this.add.rectangle(barX, barY, barWidth, barHeight, 0x333333, 0.8).setOrigin(0, 0.5);
+
+        // Progress bar
+        const progressWidth = (barWidth * levelInfo.progress) / 100;
+        this.add.rectangle(barX, barY, progressWidth, barHeight, 0x00ffff, 1.0).setOrigin(0, 0.5);
+
+        // XP Text
+        const xpText = this.add.text(width / 2, 200,
+            `${levelInfo.xp} / ${levelInfo.xpNeeded} XP`, {
+            fontSize: '11px',
+            fontFamily: 'monospace',
+            color: '#888888'
+        });
+        xpText.setOrigin(0.5);
+
+        // Funny quote (moved down)
         const quotes = [
             '"Works on my machine" - Famous Last Words',
             '"It\'s not a bug, it\'s a feature" - Survivor Chronicles',
@@ -42,16 +76,16 @@ export default class MainMenuScene extends Phaser.Scene {
             '"Who needs tests anyway?" - Natural Selection'
         ];
         const randomQuote = Phaser.Utils.Array.GetRandom(quotes);
-        const quote = this.add.text(width / 2, 160, randomQuote, {
-            fontSize: '12px',
+        const quote = this.add.text(width / 2, 215, randomQuote, {
+            fontSize: '10px',
             fontFamily: 'monospace',
-            color: '#888888',
+            color: '#555555',
             fontStyle: 'italic'
         });
         quote.setOrigin(0.5);
 
         // Game mode buttons
-        const buttonY = 220;
+        const buttonY = 250;
         const buttonSpacing = 80;
 
         this.createGameModeButton(width / 2, buttonY,
@@ -72,6 +106,10 @@ export default class MainMenuScene extends Phaser.Scene {
             'PRRushScene',
             0xe2a94a);
 
+        // HIDDEN MODES - Commented out for simplified game experience
+        // Keeping only 3 core modes: Git Survivor, Code Defense, PR Rush
+
+        /*
         this.createGameModeButton(width / 2, buttonY + buttonSpacing * 3,
             '⚔️ Dev Commander',
             'RTS: Manage your dev team!',
@@ -113,6 +151,7 @@ export default class MainMenuScene extends Phaser.Scene {
             'Challenge: Fight all bosses!',
             'BossRushScene',
             0xc0392b);
+        */
 
         // Settings button
         const settingsBtn = this.add.text(width - 20, 20, '⚙️ Settings', {

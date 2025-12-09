@@ -34,9 +34,9 @@ export default class DailyChallenges {
             // Generate new challenges
             const allChallenges = this.getAllChallenges();
 
-            // Pick 3 random challenges
+            // Pick 1 random challenge (simplified from 3)
             const shuffled = [...allChallenges].sort(() => Math.random() - 0.5);
-            const selected = shuffled.slice(0, 3);
+            const selected = shuffled.slice(0, 1);
 
             gameData.data.dailyChallenges = {
                 lastRefresh: this.getTodayString(),

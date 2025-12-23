@@ -832,17 +832,15 @@ export default class GitSurvivorScene extends BaseScene {
      */
     applyAudioSettings() {
         try {
-            const settings = gameData.getStat('settings');
+            // Access settings directly from gameData.data.settings (not via getStat which looks in stats)
+            const settings = gameData.data.settings;
 
             if (settings && this.sounds) {
                 // Apply volume settings
                 const masterVolume = settings.masterVolume !== undefined ? settings.masterVolume : 1.0;
-                const sfxVolume = settings.sfxVolume !== undefined ? settings.sfxVolume : 1.0;
 
-                // Calculate final volume
-                const finalVolume = masterVolume * sfxVolume;
-
-                this.sounds.setVolume(finalVolume);
+                // Set master volume (controls overall volume)
+                this.sounds.setVolume(masterVolume);
 
                 // Apply enabled/disabled
                 const soundEnabled = settings.soundEnabled !== undefined ? settings.soundEnabled : true;

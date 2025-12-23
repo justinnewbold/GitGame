@@ -5,6 +5,7 @@ export default class SoundManager {
     constructor(scene) {
         this.scene = scene;
         this.enabled = true;
+        this.volume = 1.0;  // Master volume (0.0 to 1.0)
         this.musicVolume = 0.3;
         this.sfxVolume = 0.5;
         // Create AudioContext once and reuse it to prevent memory leaks
@@ -14,7 +15,12 @@ export default class SoundManager {
     // Get or create the AudioContext (singleton pattern)
     getAudioContext() {
         if (!this.audioContext) {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            // Support both browser (window) and Node.js test environments (global)
+            const AudioContextClass = (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) ||
+                                      (typeof global !== 'undefined' && global.AudioContext);
+            if (AudioContextClass) {
+                this.audioContext = new AudioContextClass();
+            }
         }
         return this.audioContext;
     }
@@ -48,7 +54,7 @@ export default class SoundManager {
 
         oscillator.type = sound.type;
         oscillator.frequency.value = sound.freq;
-        gainNode.gain.value = this.sfxVolume;
+        gainNode.gain.value = this.sfxVolume * this.volume;
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + sound.duration);
 
         oscillator.start(audioContext.currentTime);
@@ -71,7 +77,7 @@ export default class SoundManager {
 
             oscillator.type = 'sine';
             oscillator.frequency.value = note.freq;
-            gainNode.gain.value = this.musicVolume;
+            gainNode.gain.value = this.musicVolume * this.volume;
 
             oscillator.start(startTime);
             oscillator.stop(startTime + note.duration);
@@ -112,9 +118,28 @@ export default class SoundManager {
         return this.enabled;
     }
 
-    setVolume(sfx, music) {
-        this.sfxVolume = sfx;
-        this.musicVolume = music;
+    /**
+     * Set enabled state for sound
+     * @param {boolean} enabled - Whether sound should be enabled
+     */
+    setEnabled(enabled) {
+        this.enabled = enabled;
+    }
+
+    /**
+     * Set volume - supports single master volume or separate sfx/music volumes
+     * @param {number} sfxOrMaster - SFX volume (0-1) or master volume if music is omitted
+     * @param {number} [music] - Music volume (0-1), optional
+     */
+    setVolume(sfxOrMaster, music) {
+        if (music === undefined) {
+            // Single parameter: set master volume
+            this.volume = Math.max(0, Math.min(1, sfxOrMaster));
+        } else {
+            // Two parameters: set separate sfx and music volumes
+            this.sfxVolume = Math.max(0, Math.min(1, sfxOrMaster));
+            this.musicVolume = Math.max(0, Math.min(1, music));
+        }
     }
 
     // Cleanup method to properly dispose of AudioContext

@@ -121,7 +121,31 @@ export const GameConfig = {
         TRAIL_SIZE: 5,
         TRAIL_ALPHA: 0.6,
         SHAKE_DURATION: 200,
-        SHAKE_INTENSITY: 0.01
+        SHAKE_INTENSITY: 0.01,
+        POOL_SIZE: 50 // Object pool initial size
+    },
+
+    // Mobile / Touch Settings
+    MOBILE: {
+        VIRTUAL_JOYSTICK: {
+            ENABLED: true,
+            RADIUS: 50,
+            INNER_RADIUS: 25, // Inner stick radius
+            DEAD_ZONE: 0.15,
+            BASE_COLOR: 0x888888,
+            BASE_ALPHA: 0.3,
+            STICK_COLOR: 0xffffff,
+            STICK_ALPHA: 0.5,
+            POSITION: {
+                // Offset from bottom-left corner
+                X_OFFSET: 75,
+                Y_OFFSET: 75
+            },
+            DYNAMIC_POSITION: false // If true, joystick appears where first touch occurs
+        },
+        TAP_THRESHOLD: 200, // ms for detecting tap vs hold
+        SWIPE_THRESHOLD: 50, // pixels for detecting swipe
+        HAPTIC_ENABLED: true
     },
 
     // Tutorial Settings
@@ -149,6 +173,42 @@ export const GameConfig = {
         BACKGROUND_DARKER: '#0a0a1a',
         BUTTON_BG: '#333333',
         BUTTON_HOVER: '#555555'
+    },
+
+    // Color Blind Mode - Deuteranopia/Protanopia friendly palette
+    COLORS_COLORBLIND: {
+        PRIMARY: '#0077BB',     // Blue instead of green
+        SECONDARY: '#EE7733',   // Orange
+        DANGER: '#CC3311',      // Dark red-orange
+        INFO: '#33BBEE',        // Cyan
+        WARNING: '#EE3377',     // Magenta-pink
+        SUCCESS: '#009988',     // Teal
+        TEXT: '#ffffff',
+        TEXT_DIM: '#888888',
+        BACKGROUND_DARK: '#1a1a2e',
+        BACKGROUND_DARKER: '#0a0a1a',
+        BUTTON_BG: '#333333',
+        BUTTON_HOVER: '#555555',
+        // Enemy colors for color blind mode - distinct patterns/shapes would be ideal
+        ENEMY: {
+            BUG: 0x0077BB,           // Blue
+            MERGE_CONFLICT: 0xCC3311, // Dark red
+            MEMORY_LEAK: 0xEE7733,    // Orange
+            NPM_PACKAGE: 0x33BBEE,    // Cyan
+            NULL_POINTER: 0xEE3377,   // Magenta
+            RACE_CONDITION: 0x009988, // Teal
+            SEGFAULT: 0xBB5566,       // Pink-red
+            HEISENBUG: 0x0077BB       // Blue (with different shape marker)
+        }
+    },
+
+    // Accessibility Settings
+    ACCESSIBILITY: {
+        HIGH_CONTRAST_MODE: false,
+        REDUCED_MOTION: false,
+        SCREEN_READER_HINTS: true,
+        FONT_SIZE_MULTIPLIER: 1.0,
+        BUTTON_SIZE_MULTIPLIER: 1.0
     },
 
     // Humor Messages
@@ -206,4 +266,49 @@ export function getDifficultyConfig(difficulty) {
 export function scaleByDifficulty(baseValue, difficulty) {
     const config = getDifficultyConfig(difficulty);
     return baseValue * config.multiplier;
+}
+
+/**
+ * Get colors based on color blind mode setting
+ * @param {boolean} colorBlindMode - Whether color blind mode is enabled
+ * @returns {Object} Color palette
+ */
+export function getColors(colorBlindMode = false) {
+    return colorBlindMode ? GameConfig.COLORS_COLORBLIND : GameConfig.COLORS;
+}
+
+/**
+ * Get enemy types with appropriate colors
+ * @param {boolean} colorBlindMode - Whether color blind mode is enabled
+ * @returns {Array} Enemy type configurations
+ */
+export function getEnemyTypes(colorBlindMode = false) {
+    if (!colorBlindMode) {
+        return GameConfig.ENEMY_TYPES;
+    }
+
+    // Return enemy types with color blind friendly colors
+    const cbColors = GameConfig.COLORS_COLORBLIND.ENEMY;
+    return GameConfig.ENEMY_TYPES.map((enemy, index) => {
+        const colorKeys = Object.keys(cbColors);
+        const colorKey = colorKeys[index % colorKeys.length];
+        return {
+            ...enemy,
+            color: cbColors[colorKey]
+        };
+    });
+}
+
+/**
+ * Get virtual joystick config with position calculated for screen size
+ * @param {number} screenHeight - Screen height
+ * @returns {Object} Joystick configuration with calculated position
+ */
+export function getJoystickConfig(screenHeight) {
+    const config = GameConfig.MOBILE.VIRTUAL_JOYSTICK;
+    return {
+        ...config,
+        x: config.POSITION.X_OFFSET,
+        y: screenHeight - config.POSITION.Y_OFFSET
+    };
 }

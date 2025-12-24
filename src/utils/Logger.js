@@ -27,30 +27,43 @@ class Logger {
      * Get log level from URL parameters or localStorage
      */
     getEnvLogLevel() {
-        // Check URL parameter first (?debug=true or ?loglevel=DEBUG)
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        if (urlParams.get('debug') === 'true') {
-            return LogLevel.DEBUG;
-        }
-        
-        const urlLevel = urlParams.get('loglevel');
-        if (urlLevel && LogLevel[urlLevel.toUpperCase()] !== undefined) {
-            return LogLevel[urlLevel.toUpperCase()];
+        // Check if running in browser environment
+        if (typeof window !== 'undefined' && window.location) {
+            // Check URL parameter first (?debug=true or ?loglevel=DEBUG)
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+
+                if (urlParams.get('debug') === 'true') {
+                    return LogLevel.DEBUG;
+                }
+
+                const urlLevel = urlParams.get('loglevel');
+                if (urlLevel && LogLevel[urlLevel.toUpperCase()] !== undefined) {
+                    return LogLevel[urlLevel.toUpperCase()];
+                }
+            } catch (e) {
+                // URL parsing might fail in some environments
+            }
         }
 
-        // Check localStorage
+        // Check localStorage (also might not be available in Node.js)
         try {
-            const stored = localStorage.getItem('gitgame_loglevel');
-            if (stored && LogLevel[stored] !== undefined) {
-                return LogLevel[stored];
+            if (typeof localStorage !== 'undefined') {
+                const stored = localStorage.getItem('gitgame_loglevel');
+                if (stored && LogLevel[stored] !== undefined) {
+                    return LogLevel[stored];
+                }
             }
         } catch (e) {
             // localStorage might not be available
         }
 
         // Default to WARN in production, DEBUG in development
-        return window.location.hostname === 'localhost' ? LogLevel.DEBUG : LogLevel.WARN;
+        // In Node.js test environment, default to WARN
+        if (typeof window !== 'undefined' && window.location && window.location.hostname === 'localhost') {
+            return LogLevel.DEBUG;
+        }
+        return LogLevel.WARN;
     }
 
     /**

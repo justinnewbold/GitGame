@@ -6,6 +6,7 @@ import InputManager from '../utils/InputManager.js';
 import SceneTransitionManager from '../utils/SceneTransitionManager.js';
 import AchievementNotification from '../utils/AchievementNotification.js';
 import HelpOverlay from '../utils/HelpOverlay.js';
+import PauseMenu from '../utils/PauseMenu.js';
 import { errorHandler } from '../utils/ErrorHandler.js';
 
 /**
@@ -36,7 +37,9 @@ export default class BaseScene extends Phaser.Scene {
         this.enableTransitions = config.enableTransitions !== false; // Default true
         this.enableAchievements = config.enableAchievements !== false; // Default true
         this.enableHelp = config.enableHelp !== false; // Default true
+        this.enablePauseMenu = config.enablePauseMenu || false; // Pause menu disabled by default
         this.helpConfig = config.helpConfig || {}; // Custom help config
+        this.pauseMenuConfig = config.pauseMenuConfig || {}; // Custom pause menu config
 
         // Utility instances
         this.inputManager = null;
@@ -44,6 +47,7 @@ export default class BaseScene extends Phaser.Scene {
         this.transitionManager = null;
         this.achievementNotification = null;
         this.helpOverlay = null;
+        this.pauseMenu = null;
     }
 
     /**
@@ -83,6 +87,16 @@ export default class BaseScene extends Phaser.Scene {
             if (this.enableHelp && !this.helpOverlay) {
                 this.helpOverlay = new HelpOverlay(this, this.helpConfig);
                 logger.debug('BaseScene', 'HelpOverlay initialized', { scene: this.scene.key });
+            }
+
+            // Initialize PauseMenu if enabled
+            if (this.enablePauseMenu && !this.pauseMenu) {
+                const defaultPauseConfig = {
+                    onQuit: () => this.transitionToScene('MainMenuScene'),
+                    onRestart: () => this.scene.restart()
+                };
+                this.pauseMenu = new PauseMenu(this, { ...defaultPauseConfig, ...this.pauseMenuConfig });
+                logger.debug('BaseScene', 'PauseMenu initialized', { scene: this.scene.key });
             }
         } catch (error) {
             logger.error('BaseScene', 'Error initializing utilities', { error });
@@ -224,6 +238,11 @@ export default class BaseScene extends Phaser.Scene {
         if (this.performanceMonitor && typeof this.performanceMonitor.destroy === 'function') {
             this.performanceMonitor.destroy();
             this.performanceMonitor = null;
+        }
+
+        if (this.pauseMenu && typeof this.pauseMenu.destroy === 'function') {
+            this.pauseMenu.destroy();
+            this.pauseMenu = null;
         }
 
         // Pause physics

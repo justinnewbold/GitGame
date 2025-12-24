@@ -21,13 +21,109 @@ export default class HelpOverlay {
      */
     getDefaultShortcuts() {
         return [
-            { keys: 'WASD / Arrow Keys', action: 'Move player' },
-            { keys: 'Mouse', action: 'Auto-attack direction' },
-            { keys: 'Space', action: 'Dodge/Special ability' },
-            { keys: 'ESC', action: 'Pause/Menu' },
-            { keys: 'F1 / H', action: 'Toggle this help' },
-            { keys: 'M', action: 'Toggle music' },
-            { keys: 'Tab', action: 'Show stats' }
+            { keys: 'WASD / Arrow Keys', action: 'Move player', category: 'movement' },
+            { keys: 'Mouse Click', action: 'Shoot / Attack', category: 'action' },
+            { keys: 'Space', action: 'Dodge / Special ability', category: 'action' },
+            { keys: 'ESC / P', action: 'Pause game', category: 'system' },
+            { keys: 'F1 / H', action: 'Toggle this help', category: 'system' },
+            { keys: 'M', action: 'Toggle music', category: 'audio' },
+            { keys: 'Tab', action: 'Show stats', category: 'system' }
+        ];
+    }
+
+    /**
+     * Get game-mode specific shortcuts
+     * @param {string} sceneKey - The scene identifier
+     * @returns {Array} Array of shortcut objects
+     */
+    static getGameModeShortcuts(sceneKey) {
+        const shortcuts = {
+            GitSurvivorScene: [
+                { keys: 'WASD / Arrows', action: 'Move character', category: 'movement' },
+                { keys: 'Mouse Click', action: 'Shoot at target', category: 'action' },
+                { keys: 'Space', action: 'Auto-target nearest enemy', category: 'action' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' },
+                { keys: 'F1 / H', action: 'Show/hide help', category: 'system' }
+            ],
+            CodeDefenseScene: [
+                { keys: 'Mouse Click', action: 'Place/select tower', category: 'action' },
+                { keys: '1-5', action: 'Select tower type', category: 'action' },
+                { keys: 'R', action: 'Rotate tower', category: 'action' },
+                { keys: 'U', action: 'Upgrade selected tower', category: 'action' },
+                { keys: 'Delete', action: 'Sell selected tower', category: 'action' },
+                { keys: 'Space', action: 'Start/pause wave', category: 'system' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ],
+            PRRushScene: [
+                { keys: 'Arrow Keys', action: 'Navigate code', category: 'movement' },
+                { keys: 'A / B / C', action: 'Select choice', category: 'action' },
+                { keys: 'Enter', action: 'Confirm selection', category: 'action' },
+                { keys: 'Space', action: 'Skip animation', category: 'system' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ],
+            DevCommanderScene: [
+                { keys: 'WASD / Arrows', action: 'Move team', category: 'movement' },
+                { keys: '1-4', action: 'Select team member', category: 'action' },
+                { keys: 'Space', action: 'Team ability', category: 'action' },
+                { keys: 'Tab', action: 'Cycle targets', category: 'action' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ],
+            BugBountyScene: [
+                { keys: 'WASD / Arrows', action: 'Move cursor', category: 'movement' },
+                { keys: 'Mouse Click', action: 'Squash bug', category: 'action' },
+                { keys: 'Space', action: 'Bug spray (special)', category: 'action' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ],
+            BossRushScene: [
+                { keys: 'WASD / Arrows', action: 'Move character', category: 'movement' },
+                { keys: 'Mouse Click', action: 'Attack boss', category: 'action' },
+                { keys: 'Space', action: 'Dodge roll', category: 'action' },
+                { keys: 'Shift', action: 'Sprint', category: 'movement' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ],
+            SprintSurvivorScene: [
+                { keys: 'WASD / Arrows', action: 'Move developer', category: 'movement' },
+                { keys: 'Space', action: 'Complete task', category: 'action' },
+                { keys: '1-3', action: 'Use power-up', category: 'action' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ],
+            DebugDungeonScene: [
+                { keys: 'WASD / Arrows', action: 'Move through code', category: 'movement' },
+                { keys: 'Space', action: 'Interact/Fix bug', category: 'action' },
+                { keys: 'E', action: 'Examine code', category: 'action' },
+                { keys: 'Tab', action: 'Show stack trace', category: 'system' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ],
+            RefactorRaceScene: [
+                { keys: 'Arrow Keys', action: 'Navigate code blocks', category: 'movement' },
+                { keys: 'Space', action: 'Select/swap block', category: 'action' },
+                { keys: 'Enter', action: 'Confirm refactor', category: 'action' },
+                { keys: 'R', action: 'Reset level', category: 'system' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ],
+            LegacyExcavatorScene: [
+                { keys: 'WASD / Arrows', action: 'Dig through code', category: 'movement' },
+                { keys: 'Space', action: 'Excavate artifact', category: 'action' },
+                { keys: 'Shift', action: 'Careful dig mode', category: 'movement' },
+                { keys: 'Tab', action: 'View inventory', category: 'system' },
+                { keys: 'ESC / P', action: 'Pause game', category: 'system' }
+            ]
+        };
+
+        // Return default if scene not found
+        const overlay = new HelpOverlay({ input: { keyboard: { on: () => {} } } }, {});
+        return shortcuts[sceneKey] || overlay.getDefaultShortcuts();
+    }
+
+    /**
+     * Get global shortcuts (shown in all games)
+     * @returns {Array} Array of global shortcut objects
+     */
+    static getGlobalShortcuts() {
+        return [
+            { keys: 'ESC / P', action: 'Pause game', category: 'system' },
+            { keys: 'F1 / H', action: 'Toggle help overlay', category: 'system' },
+            { keys: 'M', action: 'Toggle music', category: 'audio' }
         ];
     }
 
@@ -165,34 +261,83 @@ export default class HelpOverlay {
             0x00aaff
         );
 
+        // Category colors for visual organization
+        const categoryColors = {
+            movement: '#00ff00',  // Green for movement
+            action: '#ffaa00',    // Orange for actions
+            system: '#00aaff',    // Blue for system
+            audio: '#ff00ff'      // Purple for audio
+        };
+
+        const categoryIcons = {
+            movement: '🕹️',
+            action: '⚡',
+            system: '⚙️',
+            audio: '🔊'
+        };
+
         // Shortcuts list
         let yOffset = height / 2 - panelHeight / 2 + 100;
         const shortcuts = [];
 
-        this.shortcuts.forEach((shortcut, index) => {
-            // Key text (bold)
-            const keyText = this.scene.add.text(
-                width / 2 - panelWidth / 2 + 50,
+        // Group shortcuts by category for organized display
+        const groupedShortcuts = {};
+        this.shortcuts.forEach(shortcut => {
+            const cat = shortcut.category || 'action';
+            if (!groupedShortcuts[cat]) {
+                groupedShortcuts[cat] = [];
+            }
+            groupedShortcuts[cat].push(shortcut);
+        });
+
+        // Display shortcuts grouped by category
+        const categoryOrder = ['movement', 'action', 'system', 'audio'];
+        categoryOrder.forEach(category => {
+            const catShortcuts = groupedShortcuts[category];
+            if (!catShortcuts || catShortcuts.length === 0) return;
+
+            // Category header
+            const catIcon = categoryIcons[category] || '📌';
+            const catColor = categoryColors[category] || '#ffffff';
+            const catHeader = this.scene.add.text(
+                width / 2 - panelWidth / 2 + 30,
                 yOffset,
-                shortcut.keys, {
-                fontSize: '14px',
+                `${catIcon} ${category.charAt(0).toUpperCase() + category.slice(1)}`, {
+                fontSize: '12px',
                 fontFamily: 'monospace',
-                color: '#ffaa00',
+                color: catColor,
                 fontStyle: 'bold'
             });
+            shortcuts.push(catHeader);
+            yOffset += 22;
 
-            // Action text
-            const actionText = this.scene.add.text(
-                width / 2 - 50,
-                yOffset,
-                shortcut.action, {
-                fontSize: '14px',
-                fontFamily: 'monospace',
-                color: '#ffffff'
+            catShortcuts.forEach(shortcut => {
+                // Key text with category color
+                const keyText = this.scene.add.text(
+                    width / 2 - panelWidth / 2 + 50,
+                    yOffset,
+                    shortcut.keys, {
+                    fontSize: '14px',
+                    fontFamily: 'monospace',
+                    color: catColor,
+                    fontStyle: 'bold'
+                });
+
+                // Action text
+                const actionText = this.scene.add.text(
+                    width / 2 - 30,
+                    yOffset,
+                    shortcut.action, {
+                    fontSize: '14px',
+                    fontFamily: 'monospace',
+                    color: '#ffffff'
+                });
+
+                shortcuts.push(keyText, actionText);
+                yOffset += 25;
             });
 
-            shortcuts.push(keyText, actionText);
-            yOffset += 30;
+            yOffset += 5; // Extra space between categories
         });
 
         // Tips section
@@ -211,7 +356,7 @@ export default class HelpOverlay {
             const tipsTitle = this.scene.add.text(
                 width / 2,
                 yOffset,
-                '=� Pro Tips', {
+                '=� Pro Tips', {
                 fontSize: '16px',
                 fontFamily: 'monospace',
                 color: '#ffaa00',

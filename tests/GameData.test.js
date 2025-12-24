@@ -24,7 +24,7 @@ global.localStorage = {
 };
 
 // Now import GameData after localStorage is mocked
-const { GameData } = await import('../src/utils/GameData.js');
+const GameData = (await import('../src/utils/GameData.js')).default;
 
 describe('GameData', () => {
     let gameData;

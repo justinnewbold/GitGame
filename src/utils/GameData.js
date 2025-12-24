@@ -1,12 +1,47 @@
 // Global game data manager - tracks achievements, stats, and progression
 // Uses localStorage for persistence
 
+import { logger } from './Logger.js';
+
+/**
+ * @typedef {Object} GameSettings
+ * @property {boolean} soundEnabled - Whether sound effects are enabled
+ * @property {boolean} musicEnabled - Whether music is enabled
+ * @property {number} masterVolume - Master volume (0.0 to 1.0)
+ * @property {number} musicVolume - Music volume (0.0 to 1.0)
+ * @property {number} sfxVolume - SFX volume (0.0 to 1.0)
+ * @property {string} difficulty - Current difficulty ('normal', 'hard', 'nightmare')
+ * @property {boolean} [colorBlindMode] - Whether color blind mode is enabled
+ * @property {boolean} [hapticFeedback] - Whether haptic feedback is enabled (mobile)
+ * @property {boolean} [tutorialSeenGitSurvivor] - Whether tutorial was seen
+ */
+
+/**
+ * @typedef {Object} Achievement
+ * @property {string} id - Unique achievement identifier
+ * @property {string} name - Display name
+ * @property {string} desc - Description
+ * @property {string} icon - Emoji icon
+ */
+
+/**
+ * GameData - Central manager for game persistence, achievements, and stats
+ * @class
+ */
 export default class GameData {
     constructor() {
+        /** @type {string} */
         this.storageKey = 'gitgame_data';
+        /** @type {Object} */
         this.data = this.load();
+        /** @type {Map<string, Set<Function>>} */
+        this._eventListeners = new Map();
     }
 
+    /**
+     * Load game data from localStorage
+     * @returns {Object} Game data object
+     */
     load() {
         try {
             const saved = localStorage.getItem(this.storageKey);
@@ -16,7 +51,7 @@ export default class GameData {
                 return this.mergeWithDefaults(parsed);
             }
         } catch (e) {
-            console.error('Failed to load game data, using defaults:', e.message);
+            logger.error('GameData', 'Failed to load game data, using defaults', { error: e.message });
             // If parsing fails, clear corrupted data
             this.clearCorruptedData();
         }
@@ -54,11 +89,101 @@ export default class GameData {
                 masterVolume: 1.0,
                 musicVolume: 1.0,
                 sfxVolume: 1.0,
-                difficulty: 'normal'
+                difficulty: 'normal',
+                colorBlindMode: false,
+                hapticFeedback: true
             }
         };
     }
 
+    // ==================== Event System ====================
+
+    /**
+     * Subscribe to a game event
+     * @param {string} event - Event name ('achievement', 'levelUp', 'powerUp', 'gameOver', 'settingsChanged')
+     * @param {Function} callback - Function to call when event fires
+     * @returns {Function} Unsubscribe function
+     */
+    on(event, callback) {
+        if (!this._eventListeners.has(event)) {
+            this._eventListeners.set(event, new Set());
+        }
+        this._eventListeners.get(event).add(callback);
+
+        // Return unsubscribe function
+        return () => this.off(event, callback);
+    }
+
+    /**
+     * Unsubscribe from a game event
+     * @param {string} event - Event name
+     * @param {Function} callback - Function to remove
+     */
+    off(event, callback) {
+        if (this._eventListeners.has(event)) {
+            this._eventListeners.get(event).delete(callback);
+        }
+    }
+
+    /**
+     * Emit a game event
+     * @param {string} event - Event name
+     * @param {Object} data - Event data
+     */
+    emit(event, data) {
+        if (this._eventListeners.has(event)) {
+            this._eventListeners.get(event).forEach(callback => {
+                try {
+                    callback(data);
+                } catch (e) {
+                    logger.error('GameData', `Error in event listener for ${event}`, { error: e.message });
+                }
+            });
+        }
+    }
+
+    // ==================== Settings Access ====================
+
+    /**
+     * Get all settings (safe accessor)
+     * @returns {GameSettings} Current settings object
+     */
+    getSettings() {
+        return { ...this.data.settings };
+    }
+
+    /**
+     * Get a specific setting value
+     * @param {string} key - Setting key
+     * @param {*} defaultValue - Default value if setting doesn't exist
+     * @returns {*} Setting value
+     */
+    getSetting(key, defaultValue = null) {
+        return this.data.settings[key] !== undefined ? this.data.settings[key] : defaultValue;
+    }
+
+    /**
+     * Update a setting value
+     * @param {string} key - Setting key
+     * @param {*} value - New value
+     * @returns {boolean} Success status
+     */
+    setSetting(key, value) {
+        const oldValue = this.data.settings[key];
+        this.data.settings[key] = value;
+        const saved = this.save();
+
+        if (saved && oldValue !== value) {
+            this.emit('settingsChanged', { key, value, oldValue });
+        }
+
+        return saved;
+    }
+
+    /**
+     * Save game data to localStorage
+     * @returns {boolean} Success status
+     */
     save() {
         try {
             const serialized = JSON.stringify(this.data);
@@ -67,14 +192,14 @@ export default class GameData {
                 localStorage.setItem(this.storageKey, serialized);
                 return true;
             } else {
-                console.error('Game data too large to save');
+                logger.error('GameData', 'Game data too large to save');
                 return false;
             }
         } catch (e) {
-            console.error('Failed to save game data:', e.message);
+            logger.error('GameData', 'Failed to save game data', { error: e.message });
             // Check for quota exceeded error
             if (e.name === 'QuotaExceededError') {
-                console.error('Storage quota exceeded. Consider clearing old data.');
+                logger.error('GameData', 'Storage quota exceeded. Consider clearing old data.');
             }
             return false;
         }
@@ -100,12 +225,14 @@ export default class GameData {
         return deepMerge(defaults, saved);
     }
 
-    // Clear corrupted localStorage data
+    /**
+     * Clear corrupted localStorage data
+     */
     clearCorruptedData() {
         try {
             localStorage.removeItem(this.storageKey);
         } catch (e) {
-            console.error('Failed to clear corrupted data:', e.message);
+            logger.error('GameData', 'Failed to clear corrupted data', { error: e.message });
         }
     }
 
@@ -130,11 +257,20 @@ export default class GameData {
         ];
     }
 
+    /**
+     * Unlock an achievement
+     * @param {string} id - Achievement ID
+     * @returns {Achievement|null} The unlocked achievement, or null if already unlocked
+     */
     unlockAchievement(id) {
         if (!this.data.achievements.includes(id)) {
             this.data.achievements.push(id);
             this.save();
-            return this.getAchievements().find(a => a.id === id);
+            const achievement = this.getAchievements().find(a => a.id === id);
+            if (achievement) {
+                this.emit('achievement', achievement);
+            }
+            return achievement;
         }
         return null;
     }
@@ -143,6 +279,13 @@ export default class GameData {
         return this.data.achievements.includes(id);
     }
 
+    /**
+     * Update a stat value
+     * @param {string} path - Dot-separated path to stat (e.g., 'gitSurvivor.highScore')
+     * @param {*} value - Value to set/add
+     * @param {string} operation - 'set', 'increment', or 'max'
+     * @returns {boolean} Success status
+     */
     updateStat(path, value, operation = 'set') {
         try {
             const keys = path.split('.');
@@ -161,7 +304,7 @@ export default class GameData {
 
             // Validate value is a number for numeric operations
             if ((operation === 'increment' || operation === 'max') && typeof value !== 'number') {
-                console.error(`Invalid value type for ${operation} operation: ${typeof value}`);
+                logger.error('GameData', `Invalid value type for ${operation} operation: ${typeof value}`);
                 return false;
             }
 
@@ -176,11 +319,16 @@ export default class GameData {
 
             return this.save();
         } catch (e) {
-            console.error(`Failed to update stat '${path}':`, e.message);
+            logger.error('GameData', `Failed to update stat '${path}'`, { error: e.message });
             return false;
         }
     }
 
+    /**
+     * Get a stat value
+     * @param {string} path - Dot-separated path to stat
+     * @returns {number|*} Stat value or 0 if not found
+     */
     getStat(path) {
         try {
             const keys = path.split('.');
@@ -195,21 +343,31 @@ export default class GameData {
 
             return current !== undefined ? current : 0;
         } catch (e) {
-            console.error(`Failed to get stat '${path}':`, e.message);
+            logger.error('GameData', `Failed to get stat '${path}'`, { error: e.message });
             return 0;
         }
     }
 
+    /**
+     * Get current difficulty setting
+     * @returns {string} Difficulty ('normal', 'hard', 'nightmare')
+     */
     getDifficulty() {
         return this.data.settings.difficulty || 'normal';
     }
 
+    /**
+     * Set difficulty
+     * @param {string} difficulty - New difficulty
+     */
     setDifficulty(difficulty) {
-        this.data.settings.difficulty = difficulty;
-        this.save();
+        this.setSetting('difficulty', difficulty);
     }
 
-    // Check and unlock achievements based on stats
+    /**
+     * Check and unlock achievements based on current stats
+     * @returns {Achievement[]} Newly unlocked achievements
+     */
     checkAchievements() {
         const unlocked = [];
 
@@ -233,6 +391,10 @@ export default class GameData {
         return unlocked.filter(a => a !== null);
     }
 
+    /**
+     * Reset all game data to defaults
+     * @returns {boolean} Success status
+     */
     reset() {
         try {
             localStorage.removeItem(this.storageKey);
@@ -240,12 +402,15 @@ export default class GameData {
             this.save();
             return true;
         } catch (e) {
-            console.error('Failed to reset game data:', e.message);
+            logger.error('GameData', 'Failed to reset game data', { error: e.message });
             return false;
         }
     }
 
-    // Validate data integrity
+    /**
+     * Validate data integrity
+     * @returns {boolean} True if data structure is valid
+     */
     validateData() {
         if (!this.data || typeof this.data !== 'object') return false;
         if (!this.data.stats || typeof this.data.stats !== 'object') return false;
@@ -254,24 +419,31 @@ export default class GameData {
         return true;
     }
 
-    // Export data for backup
+    /**
+     * Export data for backup
+     * @returns {string|null} JSON string of game data
+     */
     exportData() {
         try {
             return JSON.stringify(this.data, null, 2);
         } catch (e) {
-            console.error('Failed to export data:', e.message);
+            logger.error('GameData', 'Failed to export data', { error: e.message });
             return null;
         }
     }
 
-    // Import data from backup
+    /**
+     * Import data from backup
+     * @param {string} jsonString - JSON string to import
+     * @returns {boolean} Success status
+     */
     importData(jsonString) {
         try {
             const imported = JSON.parse(jsonString);
             this.data = this.mergeWithDefaults(imported);
             return this.save();
         } catch (e) {
-            console.error('Failed to import data:', e.message);
+            logger.error('GameData', 'Failed to import data', { error: e.message });
             return false;
         }
     }

@@ -5,6 +5,8 @@
 
 import { logger } from './Logger.js';
 import { deviceInfo } from './DeviceDetection.js';
+import { GameConfig, getJoystickConfig } from '../config/GameConfig.js';
+import { haptics } from './HapticFeedback.js';
 
 export default class InputManager {
     constructor(scene) {
@@ -273,30 +275,80 @@ export default class InputManager {
 
     /**
      * Create virtual joystick for mobile
+     * Uses configuration from GameConfig.MOBILE.VIRTUAL_JOYSTICK
+     * @param {number} [x] - X position (defaults to config)
+     * @param {number} [y] - Y position (defaults to config)
+     * @param {number} [radius] - Joystick radius (defaults to config)
+     * @returns {Object} Virtual joystick object
      */
-    createVirtualJoystick(x, y, radius = 50) {
-        const base = this.scene.add.circle(x, y, radius, 0x888888, 0.3);
+    createVirtualJoystick(x, y, radius) {
+        const config = getJoystickConfig(this.scene.cameras.main.height);
+
+        // Use provided values or fall back to config
+        const posX = x !== undefined ? x : config.x;
+        const posY = y !== undefined ? y : config.y;
+        const baseRadius = radius !== undefined ? radius : config.RADIUS;
+        const innerRadius = config.INNER_RADIUS || baseRadius / 2;
+
+        const base = this.scene.add.circle(
+            posX,
+            posY,
+            baseRadius,
+            config.BASE_COLOR,
+            config.BASE_ALPHA
+        );
         base.setDepth(9999);
         base.setScrollFactor(0);
 
-        const stick = this.scene.add.circle(x, y, radius / 2, 0xffffff, 0.5);
+        const stick = this.scene.add.circle(
+            posX,
+            posY,
+            innerRadius,
+            config.STICK_COLOR,
+            config.STICK_ALPHA
+        );
         stick.setDepth(10000);
         stick.setScrollFactor(0);
 
         this.virtualJoystick = {
             base,
             stick,
-            baseX: x,
-            baseY: y,
-            radius,
-            vector: { x: 0, y: 0 }
+            baseX: posX,
+            baseY: posY,
+            radius: baseRadius,
+            deadZone: config.DEAD_ZONE,
+            vector: { x: 0, y: 0 },
+            isDynamic: config.DYNAMIC_POSITION
         };
 
         // Make interactive
         base.setInteractive();
 
+        // Track if joystick is being used
+        let joystickActive = false;
+
+        this.scene.input.on('pointerdown', (pointer) => {
+            if (this.virtualJoystick && this.virtualJoystick.isDynamic) {
+                // Dynamic positioning: move joystick to touch position
+                const dx = pointer.x - this.virtualJoystick.baseX;
+                const dy = pointer.y - this.virtualJoystick.baseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > this.virtualJoystick.radius * 2) {
+                    // Touch is far from joystick, relocate it
+                    this.virtualJoystick.baseX = pointer.x;
+                    this.virtualJoystick.baseY = pointer.y;
+                    base.setPosition(pointer.x, pointer.y);
+                    stick.setPosition(pointer.x, pointer.y);
+                }
+            }
+            joystickActive = true;
+            // Haptic feedback on joystick activation
+            haptics.light();
+        });
+
         this.scene.input.on('pointermove', (pointer) => {
-            if (pointer.isDown && this.virtualJoystick) {
+            if (pointer.isDown && this.virtualJoystick && joystickActive) {
                 const dx = pointer.x - this.virtualJoystick.baseX;
                 const dy = pointer.y - this.virtualJoystick.baseY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -320,6 +372,7 @@ export default class InputManager {
                 stick.y = this.virtualJoystick.baseY;
                 this.virtualJoystick.vector.x = 0;
                 this.virtualJoystick.vector.y = 0;
+                joystickActive = false;
             }
         });
 
@@ -328,15 +381,17 @@ export default class InputManager {
 
     /**
      * Get virtual joystick vector
+     * @returns {{x: number, y: number}} Movement vector with dead zone applied
      */
     getVirtualJoystickVector() {
         if (!this.virtualJoystick) return { x: 0, y: 0 };
 
-        const vec = this.virtualJoystick.vector;
+        const vec = { ...this.virtualJoystick.vector };
+        const deadZone = this.virtualJoystick.deadZone || this.joystickDeadZone;
 
         // Apply dead zone
-        if (Math.abs(vec.x) < this.joystickDeadZone) vec.x = 0;
-        if (Math.abs(vec.y) < this.joystickDeadZone) vec.y = 0;
+        if (Math.abs(vec.x) < deadZone) vec.x = 0;
+        if (Math.abs(vec.y) < deadZone) vec.y = 0;
 
         return vec;
     }

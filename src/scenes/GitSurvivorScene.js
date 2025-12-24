@@ -9,6 +9,8 @@ import { gameData } from '../utils/GameData.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { musicManager } from '../utils/MusicManager.js';
 import { shareManager } from '../utils/ShareManager.js';
+import { leaderboard } from '../utils/Leaderboard.js';
+import { screenReader } from '../utils/ScreenReader.js';
 
 export default class GitSurvivorScene extends BaseScene {
     constructor() {
@@ -17,7 +19,8 @@ export default class GitSurvivorScene extends BaseScene {
             enableInput: true,          // Enable InputManager with virtual joystick
             enablePerformance: true,    // Enable performance monitoring
             enableTransitions: true,    // Enable scene transitions
-            enableAchievements: true    // Enable achievement notifications
+            enableAchievements: true,   // Enable achievement notifications
+            enablePauseMenu: true       // Enable in-game pause menu
         });
     }
 
@@ -170,6 +173,9 @@ export default class GitSurvivorScene extends BaseScene {
         // Track stats
         gameData.updateStat('gitSurvivor.gamesPlayed', 1, 'increment');
         gameData.updateStat('gamesPlayed', 1, 'increment');
+
+        // Screen reader announcement for game start
+        screenReader.gameStart('Git Survivor');
     }
 
     createHUD() {
@@ -239,6 +245,16 @@ export default class GitSurvivorScene extends BaseScene {
     update() {
         // Update utilities from BaseScene
         this.updateUtilities();
+
+        // Update pause menu stats if paused
+        if (this.pauseMenu) {
+            this.pauseMenu.updateStats({
+                Score: this.score,
+                Level: this.level,
+                Kills: this.enemiesKilled,
+                'Power-ups': this.powerUpsCollected
+            });
+        }
 
         // Player movement with power-up multiplier
         const baseSpeed = 200;
@@ -614,6 +630,9 @@ export default class GitSurvivorScene extends BaseScene {
         // Restore some health
         this.playerHealth = Math.min(100, this.playerHealth + 20);
         this.playerSanity = Math.min(100, this.playerSanity + 15);
+
+        // Screen reader announcement
+        screenReader.levelUp(this.level);
     }
 
     findNearestEnemy() {
@@ -674,6 +693,213 @@ export default class GitSurvivorScene extends BaseScene {
 
         // Cleanup
         this.powerUpManager.cleanup();
+
+        // Check if score qualifies for leaderboard
+        const difficulty = gameData.getDifficulty();
+        const { qualifies, rank } = leaderboard.wouldQualify('gitSurvivor', this.score);
+
+        // Pause game first
+        this.physics.pause();
+        if (this.enemySpawnTimer) this.enemySpawnTimer.remove();
+        if (this.powerUpTimer) this.powerUpTimer.remove();
+
+        this.sounds.playGameOver();
+
+        // Screen reader announcement
+        screenReader.gameOver(this.score, {
+            level: this.level,
+            kills: this.enemiesKilled
+        });
+
+        if (qualifies) {
+            screenReader.highScore(this.score, rank);
+            this.showLeaderboardEntry(rank, difficulty);
+        } else {
+            this.showGameOverScreen();
+        }
+    }
+
+    showLeaderboardEntry(rank, difficulty) {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Darken screen
+        const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.9).setOrigin(0);
+        overlay.setDepth(1000);
+
+        // High score entry box
+        const container = this.add.container(width / 2, height / 2);
+        container.setDepth(1001);
+
+        const box = this.add.rectangle(0, 0, 400, 300, 0x1a1a2e);
+        box.setStrokeStyle(3, 0xffaa00);
+
+        const newHighText = this.add.text(0, -120, '🎉 NEW HIGH SCORE! 🎉', {
+            fontSize: '24px',
+            fontFamily: 'monospace',
+            color: '#ffaa00',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        const rankText = this.add.text(0, -85, `You ranked #${rank}!`, {
+            fontSize: '18px',
+            fontFamily: 'monospace',
+            color: '#00ff00'
+        }).setOrigin(0.5);
+
+        const scoreText = this.add.text(0, -55, `Score: ${this.score.toLocaleString()}`, {
+            fontSize: '20px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+
+        const enterName = this.add.text(0, -15, 'Enter your initials:', {
+            fontSize: '14px',
+            fontFamily: 'monospace',
+            color: '#888888'
+        }).setOrigin(0.5);
+
+        // Name input using 3 clickable character boxes
+        let currentName = ['A', 'A', 'A'];
+        let selectedIndex = 0;
+        const charBoxes = [];
+        const charTexts = [];
+
+        for (let i = 0; i < 3; i++) {
+            const charBox = this.add.rectangle(-50 + i * 50, 30, 40, 50,
+                i === selectedIndex ? 0x00aa00 : 0x333333);
+            charBox.setStrokeStyle(2, i === selectedIndex ? 0xffffff : 0x666666);
+            charBox.setInteractive({ useHandCursor: true });
+
+            const charText = this.add.text(-50 + i * 50, 30, currentName[i], {
+                fontSize: '28px',
+                fontFamily: 'monospace',
+                color: '#00ff00',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            charBox.on('pointerdown', () => {
+                selectedIndex = i;
+                updateSelection();
+            });
+
+            charBoxes.push(charBox);
+            charTexts.push(charText);
+        }
+
+        const updateSelection = () => {
+            charBoxes.forEach((box, i) => {
+                box.setFillStyle(i === selectedIndex ? 0x00aa00 : 0x333333);
+                box.setStrokeStyle(2, i === selectedIndex ? 0xffffff : 0x666666);
+            });
+        };
+
+        // Up/down arrows for character selection
+        const upArrow = this.add.text(-50 + selectedIndex * 50, -5, '▲', {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#00ff00'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const downArrow = this.add.text(-50 + selectedIndex * 50, 65, '▼', {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#00ff00'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const cycleChar = (direction) => {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            const currentCharIndex = chars.indexOf(currentName[selectedIndex]);
+            let newIndex = (currentCharIndex + direction + chars.length) % chars.length;
+            currentName[selectedIndex] = chars[newIndex];
+            charTexts[selectedIndex].setText(currentName[selectedIndex]);
+        };
+
+        upArrow.on('pointerdown', () => cycleChar(-1));
+        downArrow.on('pointerdown', () => cycleChar(1));
+
+        // Keyboard input
+        this.input.keyboard.on('keydown', (event) => {
+            if (event.key === 'ArrowUp') cycleChar(-1);
+            else if (event.key === 'ArrowDown') cycleChar(1);
+            else if (event.key === 'ArrowLeft') {
+                selectedIndex = Math.max(0, selectedIndex - 1);
+                updateSelection();
+                upArrow.setX(-50 + selectedIndex * 50);
+                downArrow.setX(-50 + selectedIndex * 50);
+            }
+            else if (event.key === 'ArrowRight') {
+                selectedIndex = Math.min(2, selectedIndex + 1);
+                updateSelection();
+                upArrow.setX(-50 + selectedIndex * 50);
+                downArrow.setX(-50 + selectedIndex * 50);
+            }
+            else if (event.key === 'Enter') {
+                submitScore();
+            }
+            else if (/^[a-zA-Z0-9]$/.test(event.key)) {
+                currentName[selectedIndex] = event.key.toUpperCase();
+                charTexts[selectedIndex].setText(currentName[selectedIndex]);
+                if (selectedIndex < 2) {
+                    selectedIndex++;
+                    updateSelection();
+                    upArrow.setX(-50 + selectedIndex * 50);
+                    downArrow.setX(-50 + selectedIndex * 50);
+                }
+            }
+        });
+
+        // Submit button
+        const submitBtn = this.add.text(0, 100, '[ SUBMIT ]', {
+            fontSize: '18px',
+            fontFamily: 'monospace',
+            color: '#00ff00',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        submitBtn.on('pointerover', () => submitBtn.setColor('#ffffff'));
+        submitBtn.on('pointerout', () => submitBtn.setColor('#00ff00'));
+
+        const submitScore = () => {
+            const name = currentName.join('');
+            leaderboard.addScore('gitSurvivor', name, this.score, difficulty, {
+                level: this.level,
+                kills: this.enemiesKilled,
+                powerUps: this.powerUpsCollected
+            });
+
+            // Destroy the entry UI
+            container.destroy();
+            overlay.destroy();
+
+            // Show regular game over screen
+            this.showGameOverScreen();
+        };
+
+        submitBtn.on('pointerdown', submitScore);
+
+        // Skip button
+        const skipBtn = this.add.text(0, 130, 'Skip', {
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            color: '#666666'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        skipBtn.on('pointerover', () => skipBtn.setColor('#ffffff'));
+        skipBtn.on('pointerout', () => skipBtn.setColor('#666666'));
+        skipBtn.on('pointerdown', () => {
+            container.destroy();
+            overlay.destroy();
+            this.showGameOverScreen();
+        });
+
+        container.add([box, newHighText, rankText, scoreText, enterName,
+            ...charBoxes, ...charTexts, upArrow, downArrow, submitBtn, skipBtn]);
+    }
+
+    showGameOverScreen() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
 
         // Darken screen
         const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.8).setOrigin(0);
@@ -774,12 +1000,6 @@ export default class GitSurvivorScene extends BaseScene {
         restartBtn.on('pointerdown', () => {
             this.scene.start('MainMenuScene');
         });
-
-        this.physics.pause();
-        if (this.enemySpawnTimer) this.enemySpawnTimer.remove();
-        if (this.powerUpTimer) this.powerUpTimer.remove();
-
-        this.sounds.playGameOver();
     }
 
     // Use parent's createBackButton (removed duplicate)
@@ -832,17 +1052,15 @@ export default class GitSurvivorScene extends BaseScene {
      */
     applyAudioSettings() {
         try {
-            const settings = gameData.getStat('settings');
+            // Access settings directly from gameData.data.settings (not via getStat which looks in stats)
+            const settings = gameData.data.settings;
 
             if (settings && this.sounds) {
                 // Apply volume settings
                 const masterVolume = settings.masterVolume !== undefined ? settings.masterVolume : 1.0;
-                const sfxVolume = settings.sfxVolume !== undefined ? settings.sfxVolume : 1.0;
 
-                // Calculate final volume
-                const finalVolume = masterVolume * sfxVolume;
-
-                this.sounds.setVolume(finalVolume);
+                // Set master volume (controls overall volume)
+                this.sounds.setVolume(masterVolume);
 
                 // Apply enabled/disabled
                 const soundEnabled = settings.soundEnabled !== undefined ? settings.soundEnabled : true;

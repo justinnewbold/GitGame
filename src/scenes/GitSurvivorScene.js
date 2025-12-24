@@ -10,6 +10,7 @@ import { GameConfig } from '../config/GameConfig.js';
 import { musicManager } from '../utils/MusicManager.js';
 import { shareManager } from '../utils/ShareManager.js';
 import { leaderboard } from '../utils/Leaderboard.js';
+import { screenReader } from '../utils/ScreenReader.js';
 
 export default class GitSurvivorScene extends BaseScene {
     constructor() {
@@ -172,6 +173,9 @@ export default class GitSurvivorScene extends BaseScene {
         // Track stats
         gameData.updateStat('gitSurvivor.gamesPlayed', 1, 'increment');
         gameData.updateStat('gamesPlayed', 1, 'increment');
+
+        // Screen reader announcement for game start
+        screenReader.gameStart('Git Survivor');
     }
 
     createHUD() {
@@ -626,6 +630,9 @@ export default class GitSurvivorScene extends BaseScene {
         // Restore some health
         this.playerHealth = Math.min(100, this.playerHealth + 20);
         this.playerSanity = Math.min(100, this.playerSanity + 15);
+
+        // Screen reader announcement
+        screenReader.levelUp(this.level);
     }
 
     findNearestEnemy() {
@@ -698,7 +705,14 @@ export default class GitSurvivorScene extends BaseScene {
 
         this.sounds.playGameOver();
 
+        // Screen reader announcement
+        screenReader.gameOver(this.score, {
+            level: this.level,
+            kills: this.enemiesKilled
+        });
+
         if (qualifies) {
+            screenReader.highScore(this.score, rank);
             this.showLeaderboardEntry(rank, difficulty);
         } else {
             this.showGameOverScreen();

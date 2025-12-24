@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
 import { musicManager } from '../utils/MusicManager.js';
+import { motionPrefs } from '../utils/MotionPreferences.js';
 
 export default class SettingsScene extends Phaser.Scene {
     constructor() {
@@ -76,6 +77,13 @@ export default class SettingsScene extends Phaser.Scene {
 
         this.createDifficultySelector(yPos);
         yPos += 80;
+
+        // Accessibility Settings
+        this.createSection('♿ Accessibility', yPos);
+        yPos += 40;
+
+        this.createMotionToggle(yPos);
+        yPos += 70;
 
         // Data Management
         this.createSection('💾 Data', yPos);
@@ -340,6 +348,73 @@ export default class SettingsScene extends Phaser.Scene {
 
         resetBtn.on('pointerover', () => resetBtn.setFillStyle(0xff0000, 1.0));
         resetBtn.on('pointerout', () => resetBtn.setFillStyle(0xaa0000, 0.8));
+    }
+
+    createMotionToggle(y) {
+        // Reduced Motion setting with 3 modes: System, Enabled, Disabled
+        const mode = motionPrefs.getMode();
+        const modeLabel = motionPrefs.getModeLabel();
+        const isActive = motionPrefs.shouldReduceMotion();
+
+        // Label
+        this.add.text(250, y, 'Reduce Motion:', {
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        });
+
+        // Mode button (cycles through modes)
+        const modeColors = {
+            system: 0x0066aa,    // Blue for system
+            enabled: 0x00aa00,   // Green for enabled
+            disabled: 0xaa6600   // Orange for disabled
+        };
+
+        const toggleBg = this.add.rectangle(500, y, 140, 30, modeColors[mode], 0.8);
+        toggleBg.setStrokeStyle(2, 0xffffff);
+        toggleBg.setInteractive({ useHandCursor: true });
+
+        const toggleText = this.add.text(500, y, modeLabel, {
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        toggleBg.on('pointerdown', () => {
+            const newMode = motionPrefs.cycleMode();
+            const newLabel = motionPrefs.getModeLabel();
+
+            toggleBg.setFillStyle(modeColors[newMode], 0.8);
+            toggleText.setText(newLabel);
+
+            // Visual feedback
+            toggleBg.setScale(0.9);
+            this.tweens.add({
+                targets: toggleBg,
+                scale: 1,
+                duration: 100
+            });
+        });
+
+        toggleBg.on('pointerover', () => {
+            toggleBg.setAlpha(1.0);
+        });
+
+        toggleBg.on('pointerout', () => {
+            toggleBg.setAlpha(0.8);
+        });
+
+        // Description
+        const description = isActive
+            ? 'Animations reduced for accessibility'
+            : 'Full animations enabled';
+
+        this.add.text(400, y + 25, description, {
+            fontSize: '11px',
+            fontFamily: 'monospace',
+            color: '#888888'
+        }).setOrigin(0.5);
     }
 
     confirmReset() {

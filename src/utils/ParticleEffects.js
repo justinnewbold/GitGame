@@ -1,9 +1,11 @@
 /**
  * Particle effects system for visual polish
  * Uses object pooling to reduce GC pressure
+ * Respects reduced motion preferences for accessibility
  */
 
 import { logger } from './Logger.js';
+import { motionPrefs } from './MotionPreferences.js';
 
 /**
  * Simple object pool for reusing game objects
@@ -90,6 +92,9 @@ export default class ParticleEffects {
         /** @type {Phaser.Scene} */
         this.scene = scene;
 
+        /** @type {boolean} */
+        this.reducedMotion = motionPrefs.shouldReduceMotion();
+
         // Initialize object pools for particles
         this.circlePool = new ObjectPool(
             () => this._createPooledCircle(),
@@ -102,6 +107,23 @@ export default class ParticleEffects {
             (text) => this._resetText(text),
             10
         );
+    }
+
+    /**
+     * Set reduced motion mode
+     * @param {boolean} enabled - Whether to reduce motion
+     */
+    setReducedMotion(enabled) {
+        this.reducedMotion = enabled;
+    }
+
+    /**
+     * Check if full effects should be shown
+     * @private
+     * @returns {boolean}
+     */
+    _shouldShowFullEffects() {
+        return !this.reducedMotion && !motionPrefs.shouldReduceMotion();
     }
 
     /**
@@ -203,8 +225,13 @@ export default class ParticleEffects {
      * @param {number} [count=20] - Number of particles
      */
     explosion(x, y, color = 0xff6600, count = 20) {
-        for (let i = 0; i < count; i++) {
-            const angle = (Math.PI * 2 * i) / count;
+        // Reduce particles in reduced motion mode
+        const actualCount = this._shouldShowFullEffects()
+            ? count
+            : motionPrefs.getParticleCount(count);
+
+        for (let i = 0; i < actualCount; i++) {
+            const angle = (Math.PI * 2 * i) / actualCount;
             const speed = 50 + Math.random() * 100;
 
             const particle = this._getParticle(x, y, 3, color);
@@ -214,11 +241,15 @@ export default class ParticleEffects {
                 Math.sin(angle) * speed
             );
 
+            const duration = this._shouldShowFullEffects()
+                ? 500 + Math.random() * 500
+                : motionPrefs.getTweenDuration(300);
+
             this.scene.tweens.add({
                 targets: particle,
                 alpha: 0,
                 scale: 0,
-                duration: 500 + Math.random() * 500,
+                duration,
                 onComplete: () => this._releaseParticle(particle)
             });
         }
@@ -335,6 +366,10 @@ export default class ParticleEffects {
      * @param {number} [intensity=0.01] - Shake intensity
      */
     shake(duration = 200, intensity = 0.01) {
+        // Skip shake in reduced motion mode
+        if (!motionPrefs.canShake()) {
+            return;
+        }
         if (this.scene.cameras && this.scene.cameras.main) {
             this.scene.cameras.main.shake(duration, intensity);
         }
@@ -348,6 +383,10 @@ export default class ParticleEffects {
      * @param {number} [b=255] - Blue value
      */
     flash(duration = 100, r = 255, g = 255, b = 255) {
+        // Skip flash in reduced motion mode
+        if (!motionPrefs.canFlash()) {
+            return;
+        }
         if (this.scene.cameras && this.scene.cameras.main) {
             this.scene.cameras.main.flash(duration, r, g, b);
         }

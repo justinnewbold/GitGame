@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
+import { leaderboard } from '../utils/Leaderboard.js';
+import Leaderboard from '../utils/Leaderboard.js';
 
 export default class StatsScene extends Phaser.Scene {
     constructor() {
@@ -35,15 +37,16 @@ export default class StatsScene extends Phaser.Scene {
 
     createTabs() {
         const tabs = [
-            { id: 'stats', label: '📈 Stats', x: 200 },
-            { id: 'achievements', label: '🏆 Achievements', x: 400 },
-            { id: 'records', label: '👑 Records', x: 600 }
+            { id: 'stats', label: '📈 Stats', x: 130 },
+            { id: 'achievements', label: '🏆 Achievements', x: 310 },
+            { id: 'leaderboards', label: '🏅 Leaderboards', x: 490 },
+            { id: 'records', label: '👑 Records', x: 670 }
         ];
 
         tabs.forEach(tab => {
             const isActive = this.currentTab === tab.id;
 
-            const tabBtn = this.add.rectangle(tab.x, 100, 180, 40,
+            const tabBtn = this.add.rectangle(tab.x, 100, 160, 40,
                 isActive ? 0x00aa00 : 0x333333, 0.8);
             tabBtn.setStrokeStyle(2, isActive ? 0xffffff : 0x666666);
             tabBtn.setInteractive({ useHandCursor: true });
@@ -79,6 +82,8 @@ export default class StatsScene extends Phaser.Scene {
             this.showStats();
         } else if (this.currentTab === 'achievements') {
             this.showAchievements();
+        } else if (this.currentTab === 'leaderboards') {
+            this.showLeaderboards();
         } else if (this.currentTab === 'records') {
             this.showRecords();
         }
@@ -288,6 +293,193 @@ export default class StatsScene extends Phaser.Scene {
                 fontStyle: 'bold'
             }).setOrigin(1, 0.5);
         });
+    }
+
+    showLeaderboards() {
+        const width = this.cameras.main.width;
+        let y = this.contentY;
+
+        // Game mode selector
+        const gameModes = [
+            'gitSurvivor', 'codeDefense', 'prRush', 'devCommander',
+            'bugBounty', 'bossRush', 'sprintSurvivor'
+        ];
+
+        // Store selected mode
+        if (!this.selectedGameMode) {
+            this.selectedGameMode = 'gitSurvivor';
+        }
+
+        // Title
+        this.add.text(width / 2, y, '🏅 Local Leaderboards', {
+            fontSize: '22px',
+            fontFamily: 'monospace',
+            color: '#ffaa00',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        y += 40;
+
+        // Game mode buttons
+        const buttonWidth = 95;
+        const startX = (width - (gameModes.length * buttonWidth)) / 2 + buttonWidth / 2;
+
+        gameModes.forEach((mode, index) => {
+            const btnX = startX + index * buttonWidth;
+            const isSelected = this.selectedGameMode === mode;
+            const icon = Leaderboard.getModeIcon(mode);
+
+            const btn = this.add.rectangle(btnX, y, 90, 30,
+                isSelected ? 0x00aa00 : 0x333333, 0.8);
+            btn.setStrokeStyle(1, isSelected ? 0xffffff : 0x666666);
+            btn.setInteractive({ useHandCursor: true });
+
+            this.add.text(btnX, y, icon, {
+                fontSize: '16px'
+            }).setOrigin(0.5);
+
+            btn.on('pointerdown', () => {
+                this.selectedGameMode = mode;
+                this.scene.restart();
+            });
+
+            if (!isSelected) {
+                btn.on('pointerover', () => btn.setFillStyle(0x555555, 0.8));
+                btn.on('pointerout', () => btn.setFillStyle(0x333333, 0.8));
+            }
+        });
+
+        y += 50;
+
+        // Mode name
+        const modeName = Leaderboard.getModeName(this.selectedGameMode);
+        const modeIcon = Leaderboard.getModeIcon(this.selectedGameMode);
+        this.add.text(width / 2, y, `${modeIcon} ${modeName}`, {
+            fontSize: '18px',
+            fontFamily: 'monospace',
+            color: '#00aaff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        y += 35;
+
+        // Leaderboard entries
+        const entries = leaderboard.getEntries(this.selectedGameMode);
+
+        if (entries.length === 0) {
+            this.add.text(width / 2, y + 80, 'No scores yet!', {
+                fontSize: '16px',
+                fontFamily: 'monospace',
+                color: '#666666',
+                fontStyle: 'italic'
+            }).setOrigin(0.5);
+
+            this.add.text(width / 2, y + 110, 'Play this game mode to set a high score.', {
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: '#444444'
+            }).setOrigin(0.5);
+        } else {
+            // Header row
+            this.add.text(80, y, 'RANK', {
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: '#888888',
+                fontStyle: 'bold'
+            });
+            this.add.text(160, y, 'NAME', {
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: '#888888',
+                fontStyle: 'bold'
+            });
+            this.add.text(350, y, 'SCORE', {
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: '#888888',
+                fontStyle: 'bold'
+            });
+            this.add.text(500, y, 'DIFFICULTY', {
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: '#888888',
+                fontStyle: 'bold'
+            });
+            this.add.text(650, y, 'DATE', {
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: '#888888',
+                fontStyle: 'bold'
+            });
+
+            y += 25;
+
+            // Entries
+            entries.forEach((entry, index) => {
+                const rank = index + 1;
+                const rowY = y + index * 35;
+                const isTop3 = rank <= 3;
+
+                // Row background
+                const rowBg = this.add.rectangle(width / 2, rowY, 700, 30,
+                    isTop3 ? 0x1a2a1a : 0x1a1a2e, 0.6);
+                rowBg.setStrokeStyle(1, isTop3 ? 0x00aa00 : 0x333333);
+
+                // Rank with medal for top 3
+                let rankDisplay = `#${rank}`;
+                let rankColor = '#ffffff';
+                if (rank === 1) {
+                    rankDisplay = '🥇 1st';
+                    rankColor = '#ffd700';
+                } else if (rank === 2) {
+                    rankDisplay = '🥈 2nd';
+                    rankColor = '#c0c0c0';
+                } else if (rank === 3) {
+                    rankDisplay = '🥉 3rd';
+                    rankColor = '#cd7f32';
+                }
+
+                this.add.text(80, rowY, rankDisplay, {
+                    fontSize: '14px',
+                    fontFamily: 'monospace',
+                    color: rankColor,
+                    fontStyle: isTop3 ? 'bold' : 'normal'
+                }).setOrigin(0, 0.5);
+
+                // Name
+                this.add.text(160, rowY, entry.name, {
+                    fontSize: '16px',
+                    fontFamily: 'monospace',
+                    color: isTop3 ? '#00ff00' : '#ffffff',
+                    fontStyle: 'bold'
+                }).setOrigin(0, 0.5);
+
+                // Score
+                this.add.text(350, rowY, entry.score.toLocaleString(), {
+                    fontSize: '16px',
+                    fontFamily: 'monospace',
+                    color: '#ffaa00',
+                    fontStyle: 'bold'
+                }).setOrigin(0, 0.5);
+
+                // Difficulty
+                const diffColors = {
+                    normal: '#00ff00',
+                    hard: '#ffaa00',
+                    nightmare: '#ff0000'
+                };
+                this.add.text(500, rowY, entry.difficulty || 'normal', {
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    color: diffColors[entry.difficulty] || '#888888'
+                }).setOrigin(0, 0.5);
+
+                // Date
+                this.add.text(650, rowY, Leaderboard.formatDate(entry.timestamp), {
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    color: '#666666'
+                }).setOrigin(0, 0.5);
+            });
+        }
     }
 
     createStatSection(title, y, x = 200) {

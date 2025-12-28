@@ -1,4 +1,8 @@
 // Tutorial system for teaching players game mechanics
+// Includes persistence, skip functionality, and replay options
+
+import { gameData } from './GameData.js';
+import { logger } from './Logger.js';
 
 export default class TutorialSystem {
     constructor(scene) {
@@ -7,6 +11,54 @@ export default class TutorialSystem {
         this.tutorialActive = false;
         this.tutorialCompleted = false;
         this.overlays = [];
+        this.gameMode = null;
+
+        // Initialize tutorial data in gameData if not present
+        if (!gameData.data.tutorials) {
+            gameData.data.tutorials = {};
+        }
+    }
+
+    /**
+     * Check if tutorial should be shown for a game mode
+     */
+    shouldShowTutorial(gameMode) {
+        const tutorialData = gameData.data.tutorials[gameMode];
+        return !tutorialData?.completed;
+    }
+
+    /**
+     * Mark tutorial as completed for a game mode
+     */
+    markCompleted(gameMode, skipped = false) {
+        if (!gameData.data.tutorials) {
+            gameData.data.tutorials = {};
+        }
+        gameData.data.tutorials[gameMode] = {
+            completed: true,
+            skipped,
+            completedAt: Date.now()
+        };
+        gameData.save();
+        logger.info('TutorialSystem', `Tutorial ${skipped ? 'skipped' : 'completed'} for ${gameMode}`);
+    }
+
+    /**
+     * Reset tutorial for a game mode (allows replay)
+     */
+    static resetTutorial(gameMode) {
+        if (gameData.data.tutorials && gameData.data.tutorials[gameMode]) {
+            delete gameData.data.tutorials[gameMode];
+            gameData.save();
+        }
+    }
+
+    /**
+     * Reset all tutorials
+     */
+    static resetAllTutorials() {
+        gameData.data.tutorials = {};
+        gameData.save();
     }
 
     // Tutorial data for each game mode
@@ -209,14 +261,22 @@ export default class TutorialSystem {
         return tutorials[gameMode] || [];
     }
 
-    start(gameMode) {
+    start(gameMode, force = false) {
+        // Check if tutorial was already completed (unless forced)
+        if (!force && !this.shouldShowTutorial(gameMode)) {
+            this.tutorialCompleted = true;
+            return;
+        }
+
         const steps = this.getTutorialSteps(gameMode);
         if (steps.length === 0) return;
 
+        this.gameMode = gameMode;
         this.tutorialActive = true;
         this.currentStep = 0;
         this.steps = steps;
 
+        logger.info('TutorialSystem', `Starting tutorial for ${gameMode}`);
         this.showStep(0);
     }
 
@@ -335,7 +395,7 @@ export default class TutorialSystem {
         skipBtn.setInteractive({ useHandCursor: true });
 
         skipBtn.on('pointerdown', () => {
-            this.complete();
+            this.skip();
         });
 
         skipBtn.on('pointerover', () => skipBtn.setStyle({ backgroundColor: '#555555' }));
@@ -353,10 +413,22 @@ export default class TutorialSystem {
         this.overlays = [];
     }
 
-    complete() {
+    complete(skipped = false) {
         this.clearCurrentStep();
         this.tutorialActive = false;
         this.tutorialCompleted = true;
+
+        // Persist completion status
+        if (this.gameMode) {
+            this.markCompleted(this.gameMode, skipped);
+        }
+    }
+
+    /**
+     * Skip the tutorial
+     */
+    skip() {
+        this.complete(true);
     }
 
     isActive() {

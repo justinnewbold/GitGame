@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitGame - Offline</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#00ff00">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #00ff00;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        .status {
+            font-size: 1.2rem;
+            color: #ff6600;
+            margin-bottom: 30px;
+        }
+
+        .message {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .terminal {
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .terminal-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #ff5f56; }
+        .terminal-dot.yellow { background: #ffbd2e; }
+        .terminal-dot.green { background: #27c93f; }
+
+        .terminal-content {
+            color: #00ff00;
+        }
+
+        .terminal-content .prompt {
+            color: #888;
+        }
+
+        .terminal-content .error {
+            color: #ff6600;
+        }
+
+        .blink {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .retry-btn {
+            background: transparent;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .retry-btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px #00ff00;
+        }
+
+        .tips {
+            margin-top: 40px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .tips ul {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .tips li {
+            padding: 5px 0;
+        }
+
+        .tips li::before {
+            content: '> ';
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎮</div>
+        <h1>GitGame</h1>
+        <div class="status">⚡ Connection Lost</div>
+
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+            </div>
+            <div class="terminal-content">
+                <div><span class="prompt">$</span> git fetch origin</div>
+                <div class="error">fatal: unable to access remote repository</div>
+                <div class="error">Could not resolve host: github.com</div>
+                <div><span class="prompt">$</span> <span class="blink">_</span></div>
+            </div>
+        </div>
+
+        <p class="message">
+            Looks like your connection to the server has been interrupted.<br>
+            Don't worry, your local progress is saved!
+        </p>
+
+        <button class="retry-btn" onclick="location.reload()">
+            Retry Connection
+        </button>
+
+        <div class="tips">
+            <strong>While you wait, check:</strong>
+            <ul>
+                <li>Your WiFi or mobile data connection</li>
+                <li>Router or network settings</li>
+                <li>If the problem persists, try again later</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Auto-retry when connection is restored
+        window.addEventListener('online', () => {
+            document.querySelector('.status').textContent = '✓ Connection Restored';
+            document.querySelector('.status').style.color = '#00ff00';
+            setTimeout(() => location.reload(), 1000);
+        });
+
+        // Check connection status on load
+        if (navigator.onLine) {
+            // We're online but this page was served - might be a server issue
+            document.querySelector('.message').innerHTML =
+                'The game server might be temporarily unavailable.<br>' +
+                'Please try again in a few moments.';
+        }
+    </script>
+</body>
+</html>

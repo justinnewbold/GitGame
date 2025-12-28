@@ -19,8 +19,10 @@ export default class BugBountyScene extends Phaser.Scene {
         this.currentLevel = 1;
         this.maxLevels = 20;
         this.movesRemaining = 0;
+        this.movesMade = 0;
         this.stars = 0;
         this.totalStars = 0;
+        this.fixedBugs = new Set(); // Track which bug lines have been fixed
 
         // Systems
         this.sounds = new SoundManager();
@@ -254,6 +256,7 @@ export default class BugBountyScene extends Phaser.Scene {
         this.currentPuzzle = puzzle;
         this.movesRemaining = puzzle.maxMoves;
         this.movesMade = 0;
+        this.fixedBugs.clear(); // Reset fixed bugs for new level
 
         this.displayPuzzle(puzzle);
     }
@@ -330,14 +333,20 @@ export default class BugBountyScene extends Phaser.Scene {
     }
 
     fixLine(lineIndex) {
+        // Don't process if already fixed
+        if (this.fixedBugs.has(lineIndex)) {
+            return;
+        }
+
         this.movesMade++;
         this.movesRemaining--;
+        this.fixedBugs.add(lineIndex);
 
         this.sounds.playSound('collect');
         this.particles.sparkle(400, 300, 0x00ff00, 20);
 
-        // Check if solved
-        const allFixed = this.currentPuzzle.bugs.every(bugLine => bugLine === lineIndex || this.movesMade > bugLine);
+        // Check if all bugs are fixed
+        const allFixed = this.currentPuzzle.bugs.every(bugLine => this.fixedBugs.has(bugLine));
 
         if (this.movesRemaining === 0 || allFixed) {
             this.completeLevel();

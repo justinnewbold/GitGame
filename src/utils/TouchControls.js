@@ -138,13 +138,14 @@ export default class TouchControls {
         );
 
         // Store button reference
-        const button = { bg, text, key, x, y, pressed: false };
+        const button = { bg, text, key, x, y, pressed: false, justPressed: false };
         this.actionButtons.push(button);
         this.buttonStates[key] = false;
 
         // Button handlers
         bg.on('pointerdown', () => {
             button.pressed = true;
+            button.justPressed = true;
             this.buttonStates[key] = true;
             bg.setFillStyle(0x00ff00, 0.7);
             text.setColor('#000000');

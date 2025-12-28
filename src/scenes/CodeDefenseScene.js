@@ -391,8 +391,10 @@ export default class CodeDefenseScene extends Phaser.Scene {
     }
 
     updateEnemies() {
-        this.enemies.forEach((enemy, index) => {
-            if (!enemy.active) return;
+        // Iterate backwards to safely remove elements during iteration
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (!enemy.active) continue;
 
             const data = enemy.enemyData;
             const currentWaypoint = this.waypoints[data.waypointIndex];
@@ -406,12 +408,12 @@ export default class CodeDefenseScene extends Phaser.Scene {
                 if (enemy.healthBarBg) enemy.healthBarBg.destroy();
                 if (enemy.healthBar) enemy.healthBar.destroy();
                 enemy.destroy();
-                this.enemies.splice(index, 1);
+                this.enemies.splice(i, 1);
 
                 if (this.health <= 0) {
                     this.gameOver();
                 }
-                return;
+                continue;
             }
 
             // Move toward waypoint
@@ -461,9 +463,9 @@ export default class CodeDefenseScene extends Phaser.Scene {
                 if (enemy.healthBarBg) enemy.healthBarBg.destroy();
                 if (enemy.healthBar) enemy.healthBar.destroy();
                 enemy.destroy();
-                this.enemies.splice(index, 1);
+                this.enemies.splice(i, 1);
             }
-        });
+        }
     }
 
     updateTowers(time) {

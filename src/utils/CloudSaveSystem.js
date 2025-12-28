@@ -426,7 +426,7 @@ export default class CloudSaveSystem {
         for (let i = 0; i < jsonString.length; i++) {
             const char = jsonString.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
+            hash = hash & 0xffffffff; // Convert to 32-bit integer
         }
 
         return hash.toString(36);

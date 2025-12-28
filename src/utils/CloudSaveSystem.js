@@ -1,17 +1,164 @@
 // Cloud Save System - Sync game progress across devices
+// Supports Firebase, IndexedDB fallback, and offline-first architecture
 
 import { gameData } from './GameData.js';
 import { logger } from './Logger.js';
 
+// Cloud provider configuration
+const CLOUD_CONFIG = {
+    // Firebase REST API configuration (replace with your project)
+    firebase: {
+        apiKey: null, // Set via setCloudConfig()
+        projectId: null,
+        databaseURL: null
+    },
+    // Custom backend configuration
+    custom: {
+        apiUrl: null,
+        apiKey: null
+    }
+};
+
 export default class CloudSaveSystem {
     constructor() {
-        this.isOnline = false;
+        this.isOnline = navigator?.onLine ?? false;
         this.isSyncing = false;
         this.userId = null;
         this.lastSyncTime = null;
         this.autoSyncEnabled = true;
         this.autoSyncInterval = 5 * 60 * 1000; // 5 minutes
+        this.cloudProvider = 'local'; // 'firebase', 'custom', 'local'
+        this.db = null; // IndexedDB reference
+        this.syncQueue = []; // Queue for offline changes
         this.initializeCloudSave();
+        this.initializeIndexedDB();
+        this.setupNetworkListeners();
+    }
+
+    /**
+     * Configure cloud provider
+     * @param {string} provider - 'firebase', 'custom', or 'local'
+     * @param {Object} config - Provider-specific configuration
+     */
+    static setCloudConfig(provider, config) {
+        if (provider === 'firebase') {
+            CLOUD_CONFIG.firebase = { ...CLOUD_CONFIG.firebase, ...config };
+        } else if (provider === 'custom') {
+            CLOUD_CONFIG.custom = { ...CLOUD_CONFIG.custom, ...config };
+        }
+    }
+
+    /**
+     * Initialize IndexedDB for offline storage
+     */
+    async initializeIndexedDB() {
+        return new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                logger.warn('CloudSaveSystem', 'IndexedDB not available');
+                resolve(null);
+                return;
+            }
+
+            const request = indexedDB.open('GitGameCloudSync', 1);
+
+            request.onerror = () => {
+                logger.error('CloudSaveSystem', 'Failed to open IndexedDB');
+                resolve(null);
+            };
+
+            request.onsuccess = (event) => {
+                this.db = event.target.result;
+                logger.info('CloudSaveSystem', 'IndexedDB initialized');
+                resolve(this.db);
+            };
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+
+                // Store for pending sync operations
+                if (!db.objectStoreNames.contains('syncQueue')) {
+                    db.createObjectStore('syncQueue', { keyPath: 'id', autoIncrement: true });
+                }
+
+                // Store for cached cloud saves
+                if (!db.objectStoreNames.contains('cloudCache')) {
+                    db.createObjectStore('cloudCache', { keyPath: 'userId' });
+                }
+            };
+        });
+    }
+
+    /**
+     * Setup network status listeners for online/offline detection
+     */
+    setupNetworkListeners() {
+        if (typeof window === 'undefined') return;
+
+        window.addEventListener('online', () => {
+            this.isOnline = true;
+            logger.info('CloudSaveSystem', 'Network online - processing sync queue');
+            this.processSyncQueue();
+        });
+
+        window.addEventListener('offline', () => {
+            this.isOnline = false;
+            logger.info('CloudSaveSystem', 'Network offline - queuing changes');
+        });
+    }
+
+    /**
+     * Add operation to sync queue for later processing
+     */
+    async addToSyncQueue(operation) {
+        if (!this.db) return;
+
+        const tx = this.db.transaction('syncQueue', 'readwrite');
+        const store = tx.objectStore('syncQueue');
+
+        await new Promise((resolve, reject) => {
+            const request = store.add({
+                operation,
+                timestamp: Date.now(),
+                retries: 0
+            });
+            request.onsuccess = resolve;
+            request.onerror = reject;
+        });
+    }
+
+    /**
+     * Process queued sync operations when back online
+     */
+    async processSyncQueue() {
+        if (!this.db || !this.isOnline) return;
+
+        const tx = this.db.transaction('syncQueue', 'readwrite');
+        const store = tx.objectStore('syncQueue');
+
+        const items = await new Promise((resolve) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve([]);
+        });
+
+        for (const item of items) {
+            try {
+                if (item.operation === 'upload') {
+                    await this.uploadSaveToCloud();
+                }
+                // Remove successful item from queue
+                store.delete(item.id);
+            } catch (error) {
+                // Increment retry count
+                item.retries++;
+                if (item.retries >= 3) {
+                    store.delete(item.id); // Give up after 3 retries
+                    logger.error('CloudSaveSystem', 'Sync operation failed after 3 retries');
+                } else {
+                    store.put(item);
+                }
+            }
+        }
     }
 
     initializeCloudSave() {
@@ -441,42 +588,335 @@ export default class CloudSaveSystem {
         return gameData.data.cloudSave.backups;
     }
 
-    // Mock API calls (in real game, these would call actual backend)
-    async mockCloudUpload(saveData) {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+    /**
+     * Upload save to cloud - supports Firebase, custom API, or local mock
+     */
+    async cloudUpload(saveData) {
+        // Queue for offline sync if not online
+        if (!this.isOnline) {
+            await this.addToSyncQueue('upload');
+            return { success: true, message: 'Queued for sync when online', queued: true };
+        }
+
+        switch (this.cloudProvider) {
+            case 'firebase':
+                return await this.firebaseUpload(saveData);
+            case 'custom':
+                return await this.customApiUpload(saveData);
+            default:
+                return await this.localStorageUpload(saveData);
+        }
+    }
+
+    /**
+     * Firebase REST API upload
+     */
+    async firebaseUpload(saveData) {
+        const { projectId, databaseURL } = CLOUD_CONFIG.firebase;
+        if (!projectId || !databaseURL) {
+            return { success: false, message: 'Firebase not configured' };
+        }
+
+        try {
+            const url = `${databaseURL}/saves/${this.userId}.json`;
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(saveData)
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            return {
+                success: true,
+                message: 'Save uploaded to Firebase!',
+                version: saveData.version,
+                size: JSON.stringify(saveData).length
+            };
+        } catch (error) {
+            logger.error('CloudSaveSystem', 'Firebase upload failed', { error: error.message });
+            return { success: false, message: 'Upload failed: ' + error.message };
+        }
+    }
+
+    /**
+     * Custom API upload
+     */
+    async customApiUpload(saveData) {
+        const { apiUrl, apiKey } = CLOUD_CONFIG.custom;
+        if (!apiUrl) {
+            return { success: false, message: 'Custom API not configured' };
+        }
+
+        try {
+            const response = await fetch(`${apiUrl}/saves/${this.userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey || this.authToken}`
+                },
+                body: JSON.stringify(saveData)
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const result = await response.json();
+            return {
+                success: true,
+                message: 'Save uploaded!',
+                version: saveData.version,
+                ...result
+            };
+        } catch (error) {
+            logger.error('CloudSaveSystem', 'Custom API upload failed', { error: error.message });
+            return { success: false, message: 'Upload failed: ' + error.message };
+        }
+    }
+
+    /**
+     * Local storage fallback (for development/offline mode)
+     */
+    async localStorageUpload(saveData) {
+        try {
+            localStorage.setItem(`gitgame_cloud_${this.userId}`, JSON.stringify(saveData));
+            return {
+                success: true,
+                message: 'Save stored locally!',
+                version: saveData.version,
+                size: JSON.stringify(saveData).length
+            };
+        } catch (error) {
+            return { success: false, message: 'Local storage full or unavailable' };
+        }
+    }
+
+    /**
+     * Download save from cloud
+     */
+    async cloudDownload() {
+        if (!this.isOnline && this.cloudProvider !== 'local') {
+            // Try to get from IndexedDB cache
+            return await this.getFromCache();
+        }
+
+        switch (this.cloudProvider) {
+            case 'firebase':
+                return await this.firebaseDownload();
+            case 'custom':
+                return await this.customApiDownload();
+            default:
+                return await this.localStorageDownload();
+        }
+    }
+
+    /**
+     * Firebase REST API download
+     */
+    async firebaseDownload() {
+        const { databaseURL } = CLOUD_CONFIG.firebase;
+        if (!databaseURL) {
+            return { success: false, message: 'Firebase not configured' };
+        }
+
+        try {
+            const url = `${databaseURL}/saves/${this.userId}.json`;
+            const response = await fetch(url);
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const saveData = await response.json();
+            if (!saveData) {
+                return { success: false, message: 'No cloud save found' };
+            }
+
+            // Cache for offline access
+            await this.cacheCloudSave(saveData);
+
+            return {
+                success: true,
+                message: 'Save downloaded from Firebase!',
+                saveData,
+                version: saveData.version
+            };
+        } catch (error) {
+            logger.error('CloudSaveSystem', 'Firebase download failed', { error: error.message });
+            return { success: false, message: 'Download failed: ' + error.message };
+        }
+    }
+
+    /**
+     * Custom API download
+     */
+    async customApiDownload() {
+        const { apiUrl, apiKey } = CLOUD_CONFIG.custom;
+        if (!apiUrl) {
+            return { success: false, message: 'Custom API not configured' };
+        }
+
+        try {
+            const response = await fetch(`${apiUrl}/saves/${this.userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${apiKey || this.authToken}`
+                }
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const saveData = await response.json();
+
+            // Cache for offline access
+            await this.cacheCloudSave(saveData);
+
+            return {
+                success: true,
+                message: 'Save downloaded!',
+                saveData,
+                version: saveData.version
+            };
+        } catch (error) {
+            logger.error('CloudSaveSystem', 'Custom API download failed', { error: error.message });
+            return { success: false, message: 'Download failed: ' + error.message };
+        }
+    }
+
+    /**
+     * Local storage download
+     */
+    async localStorageDownload() {
+        try {
+            const data = localStorage.getItem(`gitgame_cloud_${this.userId}`);
+            if (!data) {
+                return { success: false, message: 'No local save found' };
+            }
+
+            const saveData = JSON.parse(data);
+            return {
+                success: true,
+                message: 'Save loaded from local storage!',
+                saveData,
+                version: saveData.version
+            };
+        } catch (error) {
+            return { success: false, message: 'Failed to load local save' };
+        }
+    }
+
+    /**
+     * Cache cloud save to IndexedDB for offline access
+     */
+    async cacheCloudSave(saveData) {
+        if (!this.db) return;
+
+        const tx = this.db.transaction('cloudCache', 'readwrite');
+        const store = tx.objectStore('cloudCache');
+
+        await new Promise((resolve) => {
+            const request = store.put({ userId: this.userId, saveData, cachedAt: Date.now() });
+            request.onsuccess = resolve;
+            request.onerror = resolve;
+        });
+    }
+
+    /**
+     * Get cached cloud save from IndexedDB
+     */
+    async getFromCache() {
+        if (!this.db) {
+            return { success: false, message: 'No cache available' };
+        }
+
+        const tx = this.db.transaction('cloudCache', 'readonly');
+        const store = tx.objectStore('cloudCache');
+
+        const cached = await new Promise((resolve) => {
+            const request = store.get(this.userId);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(null);
+        });
+
+        if (!cached) {
+            return { success: false, message: 'No cached save found' };
+        }
 
         return {
             success: true,
-            message: 'Save uploaded to cloud!',
-            version: saveData.version,
-            size: JSON.stringify(saveData).length
+            message: 'Loaded from cache (offline)',
+            saveData: cached.saveData,
+            version: cached.saveData.version,
+            cached: true,
+            cachedAt: cached.cachedAt
         };
     }
 
-    async mockCloudDownload() {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+    /**
+     * Get cloud version info
+     */
+    async getCloudVersion() {
+        if (!this.isOnline && this.cloudProvider !== 'local') {
+            const cached = await this.getFromCache();
+            if (cached.success) {
+                return {
+                    version: cached.version,
+                    lastModified: cached.cachedAt,
+                    cached: true
+                };
+            }
+            return { version: 0, lastModified: 0 };
+        }
 
-        // In real implementation, return actual cloud data
-        // For now, return current data (no-op)
-        return {
-            success: true,
-            message: 'Save downloaded from cloud!',
-            saveData: this.prepareSaveData(),
-            version: gameData.data.cloudSave.lastCloudVersion
-        };
+        switch (this.cloudProvider) {
+            case 'firebase':
+                return await this.firebaseGetVersion();
+            case 'custom':
+                return await this.customApiGetVersion();
+            default:
+                return this.localStorageGetVersion();
+        }
     }
 
-    async mockGetCloudVersion() {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+    async firebaseGetVersion() {
+        const { databaseURL } = CLOUD_CONFIG.firebase;
+        try {
+            const response = await fetch(`${databaseURL}/saves/${this.userId}/version.json`);
+            const version = await response.json();
+            return { version: version || 0, lastModified: Date.now() };
+        } catch {
+            return { version: 0, lastModified: 0 };
+        }
+    }
 
-        return {
-            version: gameData.data.cloudSave.lastCloudVersion,
-            lastModified: Date.now(),
-            size: 1024 * 50 // 50KB
-        };
+    async customApiGetVersion() {
+        const { apiUrl, apiKey } = CLOUD_CONFIG.custom;
+        try {
+            const response = await fetch(`${apiUrl}/saves/${this.userId}/version`, {
+                headers: { 'Authorization': `Bearer ${apiKey || this.authToken}` }
+            });
+            return await response.json();
+        } catch {
+            return { version: 0, lastModified: 0 };
+        }
+    }
+
+    localStorageGetVersion() {
+        try {
+            const data = localStorage.getItem(`gitgame_cloud_${this.userId}`);
+            if (!data) return { version: 0, lastModified: 0 };
+            const saveData = JSON.parse(data);
+            return { version: saveData.version || 0, lastModified: saveData.lastModified || 0 };
+        } catch {
+            return { version: 0, lastModified: 0 };
+        }
+    }
+
+    /**
+     * Set cloud provider
+     * @param {'firebase' | 'custom' | 'local'} provider
+     */
+    setCloudProvider(provider) {
+        this.cloudProvider = provider;
+        gameData.data.cloudSave.provider = provider;
+        gameData.save();
+        logger.info('CloudSaveSystem', `Cloud provider set to ${provider}`);
     }
 
     // Export save as file

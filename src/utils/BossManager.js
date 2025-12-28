@@ -1,5 +1,7 @@
 // Boss Manager - Advanced boss encounters with unique abilities
 
+import Phaser from 'phaser';
+
 export default class BossManager {
     constructor(scene) {
         this.scene = scene;

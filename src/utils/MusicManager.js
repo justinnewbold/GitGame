@@ -1,6 +1,7 @@
 // Background Music Manager - Procedural music generation using Web Audio API
 
 import { gameData } from './GameData.js';
+import { logger } from './Logger.js';
 
 export default class MusicManager {
     constructor() {
@@ -11,6 +12,7 @@ export default class MusicManager {
         this.currentTheme = null;
         this.oscillators = [];
         this.scheduledNotes = [];
+        this.pendingTimeouts = [];
         this.enabled = true;
     }
 
@@ -32,7 +34,7 @@ export default class MusicManager {
                 this.masterGain.connect(this.audioContext.destination);
                 this.masterGain.gain.value = 0.3; // Default volume
             } catch (e) {
-                console.warn('Web Audio API not supported:', e);
+                logger.warn('MusicManager', 'Web Audio API not supported', { error: e.message });
                 this.enabled = false;
             }
         }
@@ -153,7 +155,8 @@ export default class MusicManager {
             this.oscillators.push(osc);
 
             beatIndex++;
-            setTimeout(playBeat, beatDuration * 1000);
+            const timeoutId = setTimeout(playBeat, beatDuration * 1000);
+            this.pendingTimeouts.push(timeoutId);
         };
 
         playBeat();
@@ -191,7 +194,8 @@ export default class MusicManager {
             }
 
             noteIndex++;
-            setTimeout(playNote, note.duration * 1000);
+            const timeoutId = setTimeout(playNote, note.duration * 1000);
+            this.pendingTimeouts.push(timeoutId);
         };
 
         playNote();
@@ -226,7 +230,8 @@ export default class MusicManager {
             this.oscillators.push(osc);
 
             noteIndex++;
-            setTimeout(playNote, beatDuration * 1000);
+            const timeoutId = setTimeout(playNote, beatDuration * 1000);
+            this.pendingTimeouts.push(timeoutId);
         };
 
         playNote();
@@ -264,6 +269,15 @@ export default class MusicManager {
     stop() {
         if (!this.isPlaying) return;
 
+        // Mark as not playing first to stop new callbacks
+        this.isPlaying = false;
+
+        // Clear all pending timeouts to prevent race conditions
+        this.pendingTimeouts.forEach(timeoutId => {
+            clearTimeout(timeoutId);
+        });
+        this.pendingTimeouts = [];
+
         // Fade out
         if (this.masterGain && this.audioContext) {
             const now = this.audioContext.currentTime;
@@ -273,15 +287,16 @@ export default class MusicManager {
 
         // Stop all oscillators after fade
         setTimeout(() => {
-            this.oscillators.forEach(osc => {
-                try {
-                    if (osc) osc.stop();
-                } catch (e) {
-                    // Already stopped
-                }
-            });
-            this.oscillators = [];
-            this.isPlaying = false;
+            if (this.oscillators) {
+                this.oscillators.forEach(osc => {
+                    try {
+                        if (osc) osc.stop();
+                    } catch (e) {
+                        // Already stopped
+                    }
+                });
+                this.oscillators = [];
+            }
         }, 600);
     }
 

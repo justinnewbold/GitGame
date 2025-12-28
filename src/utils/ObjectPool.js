@@ -1,6 +1,8 @@
 // ObjectPool - Reusable object pool for performance optimization
 // Reduces garbage collection by reusing objects instead of creating/destroying
 
+import { logger } from './Logger.js';
+
 export default class ObjectPool {
     /**
      * Create an object pool
@@ -63,7 +65,7 @@ export default class ObjectPool {
      */
     release(obj) {
         if (!obj || !obj.pooled) {
-            console.warn('Attempted to release non-pooled object');
+            logger.warn('ObjectPool', 'Attempted to release non-pooled object');
             return;
         }
 

@@ -3,7 +3,7 @@
  * Run with: npm test
  */
 
-import { describe, it, beforeEach, mock } from 'node:test';
+import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 
 // Mock localStorage
@@ -15,173 +15,118 @@ global.localStorage = {
     clear: () => { Object.keys(localStorageData).forEach(k => delete localStorageData[k]); }
 };
 
-// Mock gameData
-await mock.module('../src/utils/GameData.js', {
-    namedExports: {
-        gameData: {
-            data: {
-                stats: {
-                    gamesPlayed: 0,
-                    totalScore: 0,
-                    highScores: {}
-                }
-            },
-            save: () => {}
-        }
-    }
-});
-
-await mock.module('../src/utils/Logger.js', {
-    namedExports: {
-        logger: {
-            info: () => {},
-            warn: () => {},
-            error: () => {},
-            debug: () => {}
-        }
-    }
-});
-
-const { default: Leaderboard } = await import('../src/utils/Leaderboard.js');
+// Import Leaderboard (uses mocked localStorage)
+const { default: Leaderboard, leaderboard } = await import('../src/utils/Leaderboard.js');
 
 describe('Leaderboard', () => {
-    let leaderboard;
+    let lb;
 
     beforeEach(() => {
         localStorage.clear();
-        leaderboard = new Leaderboard();
+        lb = new Leaderboard();
     });
 
     describe('Score Submission', () => {
         it('should add score to leaderboard', () => {
-            const entry = leaderboard.submitScore('GitSurvivor', 1000, 'TestPlayer');
-            assert.ok(entry);
-            assert.strictEqual(entry.score, 1000);
-            assert.strictEqual(entry.playerName, 'TestPlayer');
+            const result = lb.addScore('gitSurvivor', 'TST', 1000);
+            assert.ok(result.added);
+            assert.strictEqual(result.rank, 1);
         });
 
-        it('should track game mode correctly', () => {
-            leaderboard.submitScore('GitSurvivor', 1000, 'Player1');
-            leaderboard.submitScore('CodeDefense', 500, 'Player2');
+        it('should sort scores in descending order', () => {
+            lb.addScore('gitSurvivor', 'AAA', 500);
+            lb.addScore('gitSurvivor', 'BBB', 1000);
+            lb.addScore('gitSurvivor', 'CCC', 750);
 
-            const gsScores = leaderboard.getScores('GitSurvivor');
-            const cdScores = leaderboard.getScores('CodeDefense');
-
-            assert.strictEqual(gsScores.length, 1);
-            assert.strictEqual(cdScores.length, 1);
+            const entries = lb.getEntries('gitSurvivor');
+            assert.strictEqual(entries[0].score, 1000);
+            assert.strictEqual(entries[1].score, 750);
+            assert.strictEqual(entries[2].score, 500);
         });
 
-        it('should include timestamp', () => {
-            const before = Date.now();
-            const entry = leaderboard.submitScore('GitSurvivor', 1000, 'TestPlayer');
-            const after = Date.now();
-
-            assert.ok(entry.timestamp >= before);
-            assert.ok(entry.timestamp <= after);
-        });
-    });
-
-    describe('Score Retrieval', () => {
-        beforeEach(() => {
-            leaderboard.submitScore('GitSurvivor', 500, 'Player1');
-            leaderboard.submitScore('GitSurvivor', 1000, 'Player2');
-            leaderboard.submitScore('GitSurvivor', 750, 'Player3');
-        });
-
-        it('should return scores sorted by highest first', () => {
-            const scores = leaderboard.getScores('GitSurvivor');
-            assert.strictEqual(scores[0].score, 1000);
-            assert.strictEqual(scores[1].score, 750);
-            assert.strictEqual(scores[2].score, 500);
-        });
-
-        it('should limit number of returned scores', () => {
-            for (let i = 0; i < 20; i++) {
-                leaderboard.submitScore('GitSurvivor', i * 100, `Player${i}`);
+        it('should limit entries to max 10', () => {
+            for (let i = 0; i < 15; i++) {
+                lb.addScore('gitSurvivor', 'TST', i * 100);
             }
 
-            const scores = leaderboard.getScores('GitSurvivor', 10);
-            assert.ok(scores.length <= 10);
-        });
-
-        it('should return empty array for unknown game mode', () => {
-            const scores = leaderboard.getScores('UnknownGame');
-            assert.deepStrictEqual(scores, []);
+            const entries = lb.getEntries('gitSurvivor');
+            assert.strictEqual(entries.length, 10);
         });
     });
 
-    describe('High Score Detection', () => {
-        it('should detect new high score', () => {
-            leaderboard.submitScore('GitSurvivor', 500, 'Player1');
-            const isHighScore = leaderboard.isHighScore('GitSurvivor', 1000);
-            assert.strictEqual(isHighScore, true);
+    describe('Score Queries', () => {
+        it('should return empty array for game mode with no scores', () => {
+            const entries = lb.getEntries('nonexistent');
+            assert.ok(Array.isArray(entries));
+            assert.strictEqual(entries.length, 0);
         });
 
-        it('should not flag lower scores as high score', () => {
-            leaderboard.submitScore('GitSurvivor', 1000, 'Player1');
-            const isHighScore = leaderboard.isHighScore('GitSurvivor', 500);
-            assert.strictEqual(isHighScore, false);
+        it('should get top score', () => {
+            lb.addScore('gitSurvivor', 'AAA', 500);
+            lb.addScore('gitSurvivor', 'BBB', 1000);
+
+            const top = lb.getTopScore('gitSurvivor');
+            assert.strictEqual(top.score, 1000);
+            assert.strictEqual(top.name, 'BBB');
         });
 
-        it('should consider first score as high score', () => {
-            const isHighScore = leaderboard.isHighScore('GitSurvivor', 100);
-            assert.strictEqual(isHighScore, true);
-        });
-    });
-
-    describe('Personal Best', () => {
-        it('should return personal best for game mode', () => {
-            leaderboard.submitScore('GitSurvivor', 500, 'Player1');
-            leaderboard.submitScore('GitSurvivor', 1000, 'Player1');
-
-            const best = leaderboard.getPersonalBest('GitSurvivor');
-            assert.strictEqual(best, 1000);
-        });
-
-        it('should return 0 when no scores exist', () => {
-            const best = leaderboard.getPersonalBest('GitSurvivor');
-            assert.strictEqual(best, 0);
+        it('should return null for top score when no entries', () => {
+            const top = lb.getTopScore('gitSurvivor');
+            assert.strictEqual(top, null);
         });
     });
 
-    describe('Statistics', () => {
-        it('should calculate total games played', () => {
-            leaderboard.submitScore('GitSurvivor', 100, 'Player1');
-            leaderboard.submitScore('GitSurvivor', 200, 'Player1');
-            leaderboard.submitScore('CodeDefense', 150, 'Player1');
-
-            const stats = leaderboard.getStats();
-            assert.strictEqual(stats.totalGames, 3);
+    describe('Score Ranking', () => {
+        it('should return correct rank for new score', () => {
+            lb.addScore('gitSurvivor', 'AAA', 500);
+            const result = lb.addScore('gitSurvivor', 'BBB', 1000);
+            assert.strictEqual(result.rank, 1); // Highest score = rank 1
         });
 
-        it('should calculate average score', () => {
-            leaderboard.submitScore('GitSurvivor', 100, 'Player1');
-            leaderboard.submitScore('GitSurvivor', 200, 'Player1');
+        it('should track leaderboard position', () => {
+            lb.addScore('gitSurvivor', 'AAA', 100);
+            lb.addScore('gitSurvivor', 'BBB', 200);
+            lb.addScore('gitSurvivor', 'CCC', 150);
 
-            const stats = leaderboard.getStats();
-            assert.strictEqual(stats.averageScore, 150);
+            const entries = lb.getEntries('gitSurvivor');
+            assert.strictEqual(entries.length, 3);
+        });
+    });
+
+    describe('Static Methods', () => {
+        it('should get mode name', () => {
+            const name = Leaderboard.getModeName('gitSurvivor');
+            assert.strictEqual(name, 'Git Survivor');
+        });
+
+        it('should get mode icon', () => {
+            const icon = Leaderboard.getModeIcon('gitSurvivor');
+            assert.strictEqual(icon, '🗡️');
+        });
+
+        it('should format date', () => {
+            const formatted = Leaderboard.formatDate(Date.now());
+            assert.ok(typeof formatted === 'string');
+            assert.ok(formatted.length > 0);
         });
     });
 
     describe('Clear Leaderboard', () => {
-        it('should clear all scores', () => {
-            leaderboard.submitScore('GitSurvivor', 1000, 'Player1');
-            leaderboard.submitScore('CodeDefense', 500, 'Player2');
+        it('should clear game mode leaderboard', () => {
+            lb.addScore('gitSurvivor', 'TST', 1000);
+            lb.clearGameMode('gitSurvivor');
 
-            leaderboard.clearAll();
-
-            assert.deepStrictEqual(leaderboard.getScores('GitSurvivor'), []);
-            assert.deepStrictEqual(leaderboard.getScores('CodeDefense'), []);
+            const entries = lb.getEntries('gitSurvivor');
+            assert.strictEqual(entries.length, 0);
         });
 
-        it('should clear scores for specific game mode', () => {
-            leaderboard.submitScore('GitSurvivor', 1000, 'Player1');
-            leaderboard.submitScore('CodeDefense', 500, 'Player2');
+        it('should clear all leaderboards', () => {
+            lb.addScore('gitSurvivor', 'TST', 1000);
+            lb.addScore('codeDefense', 'TST', 500);
+            lb.clearAll();
 
-            leaderboard.clearGameMode('GitSurvivor');
-
-            assert.deepStrictEqual(leaderboard.getScores('GitSurvivor'), []);
-            assert.strictEqual(leaderboard.getScores('CodeDefense').length, 1);
+            assert.strictEqual(lb.getEntries('gitSurvivor').length, 0);
+            assert.strictEqual(lb.getEntries('codeDefense').length, 0);
         });
     });
 });

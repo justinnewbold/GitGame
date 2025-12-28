@@ -77,7 +77,12 @@ export default class GameData {
                 legacyExcavator: { highScore: 0, gamesPlayed: 0, maxDepth: 0, artifactsFound: 0 },
                 bossRush: { highScore: 0, gamesPlayed: 0, bossesDefeated: 0 }
             },
-            achievements: [],
+            achievements: {
+                unlocked: {},
+                progress: {},
+                totalPoints: 0,
+                lastUnlocked: null
+            },
             unlockedContent: {
                 difficulty: ['normal'], // normal, hard, nightmare
                 skins: ['default'],
@@ -263,8 +268,11 @@ export default class GameData {
      * @returns {Achievement|null} The unlocked achievement, or null if already unlocked
      */
     unlockAchievement(id) {
-        if (!this.data.achievements.includes(id)) {
-            this.data.achievements.push(id);
+        if (!this.hasAchievement(id)) {
+            if (!this.data.achievements.unlocked) {
+                this.data.achievements.unlocked = {};
+            }
+            this.data.achievements.unlocked[id] = { unlockedAt: Date.now() };
             this.save();
             const achievement = this.getAchievements().find(a => a.id === id);
             if (achievement) {
@@ -276,7 +284,7 @@ export default class GameData {
     }
 
     hasAchievement(id) {
-        return this.data.achievements.includes(id);
+        return !!(this.data.achievements.unlocked && this.data.achievements.unlocked[id]);
     }
 
     /**
@@ -415,7 +423,7 @@ export default class GameData {
         if (!this.data || typeof this.data !== 'object') return false;
         if (!this.data.stats || typeof this.data.stats !== 'object') return false;
         if (!this.data.settings || typeof this.data.settings !== 'object') return false;
-        if (!Array.isArray(this.data.achievements)) return false;
+        if (!this.data.achievements || typeof this.data.achievements !== 'object') return false;
         return true;
     }
 

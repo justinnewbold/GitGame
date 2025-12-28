@@ -3,7 +3,7 @@
  * Run with: npm test
  */
 
-import { describe, it, beforeEach, afterEach, mock } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 
 // Mock localStorage
@@ -14,18 +14,6 @@ global.localStorage = {
     removeItem: (key) => { delete localStorageData[key]; },
     clear: () => { Object.keys(localStorageData).forEach(k => delete localStorageData[k]); }
 };
-
-// Mock logger
-await mock.module('../src/utils/Logger.js', {
-    namedExports: {
-        logger: {
-            info: () => {},
-            warn: () => {},
-            error: () => {},
-            debug: () => {}
-        }
-    }
-});
 
 const { default: GameStateManager, GitSurvivorStateManager, AutoSaveManager } = await import('../src/utils/GameStateManager.js');
 

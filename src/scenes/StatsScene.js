@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
-import { leaderboard } from '../utils/Leaderboard.js';
+import Leaderboard, { leaderboard } from '../utils/Leaderboard.js';
 import { logger } from '../utils/Logger.js';
 
 export default class StatsScene extends Phaser.Scene {

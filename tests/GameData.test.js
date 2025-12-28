@@ -39,7 +39,8 @@ describe('GameData', () => {
             assert.ok(gameData.data);
             assert.ok(gameData.data.stats);
             assert.ok(gameData.data.settings);
-            assert.ok(Array.isArray(gameData.data.achievements));
+            assert.ok(typeof gameData.data.achievements === 'object');
+            assert.ok(gameData.data.achievements.unlocked !== undefined);
         });
 
         it('should have correct default stats', () => {
@@ -102,7 +103,7 @@ describe('GameData', () => {
 
     describe('Achievements', () => {
         it('should start with no achievements', () => {
-            assert.strictEqual(gameData.data.achievements.length, 0);
+            assert.strictEqual(Object.keys(gameData.data.achievements.unlocked || {}).length, 0);
         });
 
         it('should unlock achievements', () => {
@@ -116,7 +117,7 @@ describe('GameData', () => {
             gameData.unlockAchievement('first_blood');
             const second = gameData.unlockAchievement('first_blood');
             assert.strictEqual(second, null);
-            assert.strictEqual(gameData.data.achievements.length, 1);
+            assert.strictEqual(Object.keys(gameData.data.achievements.unlocked).length, 1);
         });
     });
 
@@ -161,7 +162,7 @@ describe('GameData', () => {
         it('should import data from JSON string', () => {
             const testData = {
                 stats: { gamesPlayed: 20, totalScore: 5000 },
-                achievements: ['first_blood'],
+                achievements: { unlocked: { first_blood: { unlockedAt: Date.now() } }, progress: {}, totalPoints: 0 },
                 settings: { difficulty: 'hard' },
                 unlockedContent: { difficulty: ['normal', 'hard'] }
             };
@@ -185,7 +186,7 @@ describe('GameData', () => {
             gameData.reset();
 
             assert.strictEqual(gameData.getStat('gamesPlayed'), 0);
-            assert.strictEqual(gameData.data.achievements.length, 0);
+            assert.strictEqual(Object.keys(gameData.data.achievements.unlocked || {}).length, 0);
         });
     });
 });

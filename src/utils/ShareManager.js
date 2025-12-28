@@ -1,6 +1,8 @@
 // ShareManager - Social sharing functionality
 // Supports native Web Share API, social media, and clipboard
 
+import { logger } from './Logger.js';
+
 export default class ShareManager {
     constructor() {
         this.gameTitle = 'GitGame';
@@ -89,7 +91,7 @@ export default class ShareManager {
             text += ` (${options.enemiesKilled} enemies defeated)`;
         }
 
-        text += `! <®\n\n`;
+        text += `! ðŸš€\n\n`;
         text += `Can you beat my score? Play ${this.gameTitle}!\n`;
         text += `#GitGame #IndieGame #Coding`;
 
@@ -100,7 +102,7 @@ export default class ShareManager {
      * Generate shareable text for an achievement
      */
     generateAchievementText(achievement) {
-        return `<Æ Achievement Unlocked in ${this.gameTitle}!\n\n` +
+        return `ðŸ† Achievement Unlocked in ${this.gameTitle}!\n\n` +
                `${achievement.icon} ${achievement.name}\n` +
                `${achievement.description}\n\n` +
                `#GitGame #Achievement #Gaming`;
@@ -110,10 +112,10 @@ export default class ShareManager {
      * Generate shareable text for stats
      */
     generateStatsText(stats) {
-        return `=Ê My ${this.gameTitle} Stats:\n\n` +
-               `<® Games Played: ${stats.gamesPlayed}\n` +
-               `P Total Score: ${stats.totalScore}\n` +
-               `<Æ Achievements: ${stats.achievements || 0}\n\n` +
+        return `ðŸ“Š My ${this.gameTitle} Stats:\n\n` +
+               `ðŸŽ® Games Played: ${stats.gamesPlayed}\n` +
+               `ðŸ† Total Score: ${stats.totalScore}\n` +
+               `â­ Achievements: ${stats.achievements || 0}\n\n` +
                `Think you can do better?\n` +
                `#GitGame #Gaming`;
     }
@@ -123,29 +125,29 @@ export default class ShareManager {
      */
     getGameModeEmoji(gameMode) {
         const emojis = {
-            'Git Survivor': '=á',
-            'GitSurvivor': '=á',
-            'Code Defense': '<ð',
-            'CodeDefense': '<ð',
-            'PR Rush': 'ð',
-            'PRRush': 'ð',
-            'Dev Commander': '”',
-            'DevCommander': '”',
-            'Debug Dungeon': '<ð',
-            'DebugDungeon': '<ð',
-            'Refactor Race': '<Î',
-            'RefactorRace': '<Î',
-            'Sprint Survivor': '<Ã',
-            'SprintSurvivor': '<Ã',
-            'Bug Bounty': '=',
-            'BugBounty': '=',
-            'Legacy Excavator': 'Ï',
-            'LegacyExcavator': 'Ï',
-            'Boss Rush': '=y',
-            'BossRush': '=y'
+            'Git Survivor': 'âš”ï¸',
+            'GitSurvivor': 'âš”ï¸',
+            'Code Defense': 'ðŸ›¡ï¸',
+            'CodeDefense': 'ðŸ›¡ï¸',
+            'PR Rush': 'ðŸƒ',
+            'PRRush': 'ðŸƒ',
+            'Dev Commander': 'ðŸ‘¨â€ðŸ’»',
+            'DevCommander': 'ðŸ‘¨â€ðŸ’»',
+            'Debug Dungeon': 'ðŸ›',
+            'DebugDungeon': 'ðŸ›',
+            'Refactor Race': 'ðŸ”§',
+            'RefactorRace': 'ðŸ”§',
+            'Sprint Survivor': 'ðŸ',
+            'SprintSurvivor': 'ðŸ',
+            'Bug Bounty': 'ðŸ’°',
+            'BugBounty': 'ðŸ’°',
+            'Legacy Excavator': 'â›ï¸',
+            'LegacyExcavator': 'â›ï¸',
+            'Boss Rush': 'ðŸ‘¹',
+            'BossRush': 'ðŸ‘¹'
         };
 
-        return emojis[gameMode] || '<®';
+        return emojis[gameMode] || 'ðŸŽ®';
     }
 
     /**
@@ -158,7 +160,7 @@ export default class ShareManager {
         } catch (error) {
             // User cancelled or error occurred
             if (error.name !== 'AbortError') {
-                console.warn('Native share failed:', error);
+                logger.warn('ShareManager', 'Native share failed', { error: error.message });
             }
             return { success: false, error: error.message };
         }
@@ -192,7 +194,7 @@ export default class ShareManager {
                 throw new Error('Copy command failed');
             }
         } catch (error) {
-            console.error('Failed to copy to clipboard:', error);
+            logger.error('ShareManager', 'Failed to copy to clipboard', { error: error.message });
             return { success: false, error: error.message };
         }
     }
@@ -243,7 +245,7 @@ export default class ShareManager {
             const baseUrl = window.location.origin + window.location.pathname;
             return `${baseUrl}?share=${encoded}`;
         } catch (error) {
-            console.error('Failed to create shareable URL:', error);
+            logger.error('ShareManager', 'Failed to create shareable URL', { error: error.message });
             return this.gameUrl;
         }
     }
@@ -261,7 +263,7 @@ export default class ShareManager {
                 return JSON.parse(decoded);
             }
         } catch (error) {
-            console.error('Failed to parse shareable URL:', error);
+            logger.error('ShareManager', 'Failed to parse shareable URL', { error: error.message });
         }
 
         return null;
@@ -277,25 +279,25 @@ export default class ShareManager {
             options: [
                 {
                     name: 'Copy to Clipboard',
-                    icon: '=Ë',
+                    icon: 'ðŸ“‹',
                     method: 'clipboard',
                     available: true
                 },
                 {
                     name: 'Share on Twitter',
-                    icon: '=&',
+                    icon: 'ðŸ¦',
                     method: 'twitter',
                     available: true
                 },
                 {
                     name: 'Share on Facebook',
-                    icon: '=Ø',
+                    icon: 'ðŸ“˜',
                     method: 'facebook',
                     available: true
                 },
                 {
                     name: 'Share on Reddit',
-                    icon: '=4',
+                    icon: 'ðŸ¤–',
                     method: 'reddit',
                     available: true
                 }

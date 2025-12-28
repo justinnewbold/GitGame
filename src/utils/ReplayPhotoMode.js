@@ -1,6 +1,8 @@
 // Replay & Photo Mode - Record gameplay and take epic screenshots
 
+import Phaser from 'phaser';
 import { gameData } from './GameData.js';
+import { logger } from './Logger.js';
 
 export default class ReplayPhotoMode {
     constructor(scene) {
@@ -45,7 +47,7 @@ export default class ReplayPhotoMode {
         this.recordedFrames = [];
         this.recordingStartTime = Date.now();
 
-        console.log('Replay recording started');
+        logger.info('ReplayPhotoMode', 'Replay recording started');
     }
 
     // Stop recording
@@ -55,7 +57,7 @@ export default class ReplayPhotoMode {
         this.isRecording = false;
         const duration = Date.now() - this.recordingStartTime;
 
-        console.log(`Replay recording stopped. Duration: ${duration}ms, Frames: ${this.recordedFrames.length}`);
+        logger.info('ReplayPhotoMode', 'Replay recording stopped', { duration, frames: this.recordedFrames.length });
 
         return {
             frames: this.recordedFrames.length,

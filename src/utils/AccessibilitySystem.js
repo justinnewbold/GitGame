@@ -1,6 +1,7 @@
 // Accessibility System - Make the game accessible to all players
 
 import { gameData } from './GameData.js';
+import { logger } from './Logger.js';
 
 export default class AccessibilitySystem {
     constructor(scene) {
@@ -479,7 +480,7 @@ export default class AccessibilitySystem {
     // Screen reader announcements
     announce(message, priority = 'polite') {
         // In a real implementation, this would use ARIA live regions
-        console.log(`[Screen Reader - ${priority}]:`, message);
+        logger.info('ScreenReader', message, { priority });
 
         // Could also show on-screen text for deaf players
         if (gameData.data.accessibility.soundVisualization) {

@@ -9,6 +9,7 @@ export default class ComboSystem {
         this.comboTimeout = 3000; // 3 seconds to maintain combo
         this.multiplier = 1;
         this.comboText = null;
+        this.multiplierText = null;
         this.comboTimer = null;
     }
 
@@ -105,7 +106,12 @@ export default class ComboSystem {
 
         // Add multiplier text
         if (this.multiplier > 1) {
-            const multText = this.scene.add.text(width - 20, 125,
+            // Clean up previous multiplier text first
+            if (this.multiplierText && this.multiplierText.active) {
+                this.multiplierText.destroy();
+            }
+
+            this.multiplierText = this.scene.add.text(width - 20, 125,
                 `x${this.multiplier} SCORE`, {
                 fontSize: '14px',
                 fontFamily: 'monospace',
@@ -113,15 +119,7 @@ export default class ComboSystem {
                 stroke: '#000000',
                 strokeThickness: 3
             });
-            multText.setOrigin(1, 0.5);
-
-            // Cleanup with combo text
-            const oldMultText = multText;
-            this.scene.time.delayedCall(this.comboTimeout, () => {
-                if (oldMultText && oldMultText.active) {
-                    oldMultText.destroy();
-                }
-            });
+            this.multiplierText.setOrigin(1, 0.5);
         }
 
         // Pulse effect
@@ -135,15 +133,31 @@ export default class ComboSystem {
 
     resetCombo() {
         if (this.combo > 0) {
-            // Show combo lost
-            if (this.comboText) {
+            // Show combo lost with fade effect
+            if (this.comboText && this.comboText.active) {
                 this.scene.tweens.add({
                     targets: this.comboText,
                     alpha: 0,
                     duration: 500,
                     onComplete: () => {
-                        if (this.comboText) {
+                        if (this.comboText && this.comboText.active) {
                             this.comboText.destroy();
+                            this.comboText = null;
+                        }
+                    }
+                });
+            }
+
+            // Also clean up multiplier text
+            if (this.multiplierText && this.multiplierText.active) {
+                this.scene.tweens.add({
+                    targets: this.multiplierText,
+                    alpha: 0,
+                    duration: 500,
+                    onComplete: () => {
+                        if (this.multiplierText && this.multiplierText.active) {
+                            this.multiplierText.destroy();
+                            this.multiplierText = null;
                         }
                     }
                 });

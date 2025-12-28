@@ -1,5 +1,7 @@
 // Power-up definitions and spawning system
 
+import Phaser from 'phaser';
+
 export const PowerUpTypes = {
     // Universal power-ups
     COFFEE: {

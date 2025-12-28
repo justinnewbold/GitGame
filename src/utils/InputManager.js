@@ -3,6 +3,7 @@
  * Provides consistent input API across all scenes
  */
 
+import Phaser from 'phaser';
 import { logger } from './Logger.js';
 import { deviceInfo } from './DeviceDetection.js';
 import { GameConfig, getJoystickConfig } from '../config/GameConfig.js';

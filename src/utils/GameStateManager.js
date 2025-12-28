@@ -1,6 +1,8 @@
 // GameStateManager - Save and resume gameplay state
 // Allows players to pause and resume games across sessions
 
+import { logger } from './Logger.js';
+
 export default class GameStateManager {
     constructor(storageKey = 'gitgame_state') {
         this.storageKey = storageKey;
@@ -25,7 +27,7 @@ export default class GameStateManager {
             this.currentState = gameState;
             return true;
         } catch (error) {
-            console.error('Failed to save game state:', error);
+            logger.error('GameStateManager', 'Failed to save game state', { error: error.message });
             return false;
         }
     }
@@ -50,7 +52,7 @@ export default class GameStateManager {
             this.currentState = gameState;
             return gameState;
         } catch (error) {
-            console.error('Failed to load game state:', error);
+            logger.error('GameStateManager', 'Failed to load game state', { error: error.message });
             return null;
         }
     }
@@ -185,7 +187,7 @@ export class GitSurvivorStateManager extends GameStateManager {
 
             return true;
         } catch (error) {
-            console.error('Failed to restore game state:', error);
+            logger.error('GitSurvivorStateManager', 'Failed to restore game state', { error: error.message });
             return false;
         }
     }
@@ -253,7 +255,7 @@ export class AutoSaveManager {
     showSaveIndicator() {
         const width = this.scene.cameras.main.width;
 
-        const indicator = this.scene.add.text(width - 20, 20, '=¾ Saved', {
+        const indicator = this.scene.add.text(width - 20, 20, 'âœ“ Saved', {
             fontSize: '12px',
             fontFamily: 'monospace',
             color: '#00ff00',

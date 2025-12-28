@@ -1,5 +1,6 @@
 // Easter Eggs and Secrets System - Hidden content and funny surprises!
 
+import Phaser from 'phaser';
 import { gameData } from './GameData.js';
 
 export default class EasterEggs {

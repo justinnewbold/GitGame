@@ -11,6 +11,7 @@ import { musicManager } from '../utils/MusicManager.js';
 import { shareManager } from '../utils/ShareManager.js';
 import { leaderboard } from '../utils/Leaderboard.js';
 import { screenReader } from '../utils/ScreenReader.js';
+import { logger } from '../utils/Logger.js';
 
 export default class GitSurvivorScene extends BaseScene {
     constructor() {
@@ -1067,7 +1068,7 @@ export default class GitSurvivorScene extends BaseScene {
                 this.sounds.setEnabled(soundEnabled);
             }
         } catch (error) {
-            console.warn('Could not apply audio settings', error);
+            logger.warn('GitSurvivorScene', 'Could not apply audio settings', { error: error.message });
         }
     }
 

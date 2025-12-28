@@ -1,6 +1,7 @@
 // Cloud Save System - Sync game progress across devices
 
 import { gameData } from './GameData.js';
+import { logger } from './Logger.js';
 
 export default class CloudSaveSystem {
     constructor() {
@@ -375,7 +376,7 @@ export default class CloudSaveSystem {
         this.autoSyncTimer = setInterval(() => {
             if (this.isOnline && this.autoSyncEnabled) {
                 this.sync().catch(err => {
-                    console.error('Auto-sync failed:', err);
+                    logger.error('CloudSaveSystem', 'Auto-sync failed', { error: err.message });
                 });
             }
         }, this.autoSyncInterval);

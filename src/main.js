@@ -13,6 +13,9 @@ import LegacyExcavatorScene from './scenes/LegacyExcavatorScene.js';
 import BossRushScene from './scenes/BossRushScene.js';
 import SettingsScene from './scenes/SettingsScene.js';
 import StatsScene from './scenes/StatsScene.js';
+import AchievementsScene from './scenes/AchievementsScene.js';
+import ChallengesScene from './scenes/ChallengesScene.js';
+import CosmeticsScene from './scenes/CosmeticsScene.js';
 
 // Game configuration
 const config = {
@@ -37,6 +40,9 @@ const config = {
         MainMenuScene,
         SettingsScene,
         StatsScene,
+        AchievementsScene,
+        ChallengesScene,
+        CosmeticsScene,
         GitSurvivorScene,
         CodeDefenseScene,
         PRRushScene,

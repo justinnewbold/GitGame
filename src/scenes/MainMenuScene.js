@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
+import { logger } from '../utils/Logger.js';
 import { musicManager } from '../utils/MusicManager.js';
 
 export default class MainMenuScene extends Phaser.Scene {

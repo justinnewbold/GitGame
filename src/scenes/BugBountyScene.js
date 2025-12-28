@@ -2,6 +2,7 @@
 
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
+import { logger } from '../utils/Logger.js';
 import SoundManager from '../utils/SoundManager.js';
 import ParticleEffects from '../utils/ParticleEffects.js';
 

@@ -8,6 +8,12 @@ import AchievementNotification from '../utils/AchievementNotification.js';
 import HelpOverlay from '../utils/HelpOverlay.js';
 import PauseMenu from '../utils/PauseMenu.js';
 import { errorHandler } from '../utils/ErrorHandler.js';
+// New integrated systems
+import AchievementSystem from '../utils/AchievementSystem.js';
+import { challengeSystem } from '../utils/ChallengeSystem.js';
+import { analyticsSystem } from '../utils/AnalyticsSystem.js';
+import { cosmeticsSystem } from '../utils/CosmeticsSystem.js';
+import ReplaySystem from '../utils/ReplaySystem.js';
 
 /**
  * BaseScene - Common functionality for all game scenes
@@ -48,6 +54,20 @@ export default class BaseScene extends Phaser.Scene {
         this.achievementNotification = null;
         this.helpOverlay = null;
         this.pauseMenu = null;
+
+        // Integrated game systems
+        this.achievementSystem = null;
+        this.replaySystem = null;
+        this.gameStats = {
+            score: 0,
+            kills: 0,
+            combo: 0,
+            maxCombo: 0,
+            powerups: 0,
+            damageTaken: 0,
+            time: 0,
+            startTime: 0
+        };
     }
 
     /**
@@ -98,10 +118,128 @@ export default class BaseScene extends Phaser.Scene {
                 this.pauseMenu = new PauseMenu(this, { ...defaultPauseConfig, ...this.pauseMenuConfig });
                 logger.debug('BaseScene', 'PauseMenu initialized', { scene: this.scene.key });
             }
+
+            // Initialize integrated game systems
+            this.achievementSystem = new AchievementSystem(this);
+            this.replaySystem = new ReplaySystem(this);
+            logger.debug('BaseScene', 'Game systems initialized', { scene: this.scene.key });
         } catch (error) {
             logger.error('BaseScene', 'Error initializing utilities', { error });
             errorHandler.handleError(error, 'BaseScene.initUtilities');
         }
+    }
+
+    /**
+     * Start tracking a game session
+     * Call this at the beginning of gameplay
+     */
+    startGameSession() {
+        const gameMode = this.scene.key;
+        this.gameStats = {
+            score: 0,
+            kills: 0,
+            combo: 0,
+            maxCombo: 0,
+            powerups: 0,
+            damageTaken: 0,
+            time: 0,
+            startTime: Date.now()
+        };
+
+        // Start analytics session
+        analyticsSystem.startSession(gameMode);
+
+        // Start replay recording
+        if (this.replaySystem) {
+            this.replaySystem.startRecording(gameMode);
+        }
+
+        logger.info('BaseScene', `Game session started: ${gameMode}`);
+    }
+
+    /**
+     * Update game stats during gameplay
+     * Call this in your update loop or when stats change
+     */
+    updateGameStats(stats) {
+        Object.assign(this.gameStats, stats);
+        this.gameStats.maxCombo = Math.max(this.gameStats.maxCombo, this.gameStats.combo || 0);
+        this.gameStats.time = Date.now() - this.gameStats.startTime;
+
+        // Update analytics
+        analyticsSystem.updateSession({
+            score: this.gameStats.score,
+            kills: this.gameStats.kills,
+            powerups: this.gameStats.powerups,
+            combo: this.gameStats.maxCombo,
+            damage: this.gameStats.damageTaken
+        });
+
+        // Record replay frame
+        if (this.replaySystem && this.player) {
+            this.replaySystem.recordFrame({
+                playerX: this.player.x,
+                playerY: this.player.y,
+                playerHealth: this.player.health || 100,
+                score: this.gameStats.score
+            });
+        }
+    }
+
+    /**
+     * End game session and process all systems
+     * Call this when the game ends (death, victory, quit)
+     */
+    endGameSession(finalScore = null) {
+        if (finalScore !== null) {
+            this.gameStats.score = finalScore;
+        }
+        this.gameStats.time = Date.now() - this.gameStats.startTime;
+
+        const gameMode = this.scene.key;
+        const gameStats = {
+            score: this.gameStats.score,
+            time: Math.floor(this.gameStats.time / 1000), // Convert to seconds
+            kills: this.gameStats.kills,
+            combo: this.gameStats.maxCombo,
+            powerups: this.gameStats.powerups,
+            damageTaken: this.gameStats.damageTaken,
+            gameMode: gameMode
+        };
+
+        // Check achievements
+        if (this.achievementSystem) {
+            this.achievementSystem.checkAchievements(gameStats);
+        }
+
+        // Update challenge progress
+        challengeSystem.updateProgress(gameStats);
+
+        // End analytics session
+        analyticsSystem.endSession();
+
+        // Stop replay recording
+        if (this.replaySystem) {
+            this.replaySystem.stopRecording(this.gameStats.score);
+        }
+
+        // Award currency based on score
+        const currencyReward = cosmeticsSystem.calculateReward(this.gameStats.score);
+        if (currencyReward > 0) {
+            cosmeticsSystem.addCurrency(currencyReward);
+        }
+
+        logger.info('BaseScene', `Game session ended: ${gameMode}`, gameStats);
+    }
+
+    /**
+     * Record a game event (kill, damage, powerup collected, etc.)
+     */
+    recordGameEvent(eventType, eventData = {}) {
+        if (this.replaySystem) {
+            this.replaySystem.recordEvent(eventType, eventData);
+        }
+        analyticsSystem.recordEvent(eventType, eventData);
     }
 
     /**
@@ -275,6 +413,9 @@ export default class BaseScene extends Phaser.Scene {
     createGameOver(score, stats = {}, funnyMessages = []) {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+
+        // End game session and process all integrated systems
+        this.endGameSession(score);
 
         // Save score
         const gameMode = this.scene.key.replace('Scene', '');

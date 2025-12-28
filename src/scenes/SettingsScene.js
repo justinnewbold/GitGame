@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { gameData } from '../utils/GameData.js';
+import { logger } from '../utils/Logger.js';
 import { musicManager } from '../utils/MusicManager.js';
 import { motionPrefs } from '../utils/MotionPreferences.js';
 

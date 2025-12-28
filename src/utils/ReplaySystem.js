@@ -18,6 +18,7 @@ export default class ReplaySystem {
         this.currentReplay = null;
         this.recordingData = null;
         this.playbackIndex = 0;
+        this.playbackEventIndex = 0;  // Initialize playback event index
         this.playbackTimer = null;
         this.startTime = 0;
 
@@ -203,7 +204,8 @@ export default class ReplaySystem {
      * Delete a replay
      */
     deleteReplay(replayId) {
-        const index = gameData.data.replays?.findIndex(r => r.id === replayId);
+        if (!gameData.data.replays) return false;
+        const index = gameData.data.replays.findIndex(r => r.id === replayId);
         if (index !== -1) {
             gameData.data.replays.splice(index, 1);
             gameData.save();
@@ -276,6 +278,7 @@ export default class ReplaySystem {
         this.isPlaying = false;
         this.currentReplay = null;
         this.playbackIndex = 0;
+        this.playbackEventIndex = 0;  // Reset event index
 
         logger.info('ReplaySystem', 'Stopped playback');
     }
@@ -400,7 +403,8 @@ export default class ReplaySystem {
      * Delete a screenshot
      */
     deleteScreenshot(screenshotId) {
-        const index = gameData.data.screenshots?.findIndex(s => s.id === screenshotId);
+        if (!gameData.data.screenshots) return false;
+        const index = gameData.data.screenshots.findIndex(s => s.id === screenshotId);
         if (index !== -1) {
             gameData.data.screenshots.splice(index, 1);
             gameData.save();

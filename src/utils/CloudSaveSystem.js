@@ -30,6 +30,7 @@ export default class CloudSaveSystem {
         this.cloudProvider = 'local'; // 'firebase', 'custom', 'local'
         this.db = null; // IndexedDB reference
         this.syncQueue = []; // Queue for offline changes
+        this.networkListeners = null; // Store listener references for cleanup
         this.initializeCloudSave();
         this.initializeIndexedDB();
         this.setupNetworkListeners();
@@ -94,16 +95,32 @@ export default class CloudSaveSystem {
     setupNetworkListeners() {
         if (typeof window === 'undefined') return;
 
-        window.addEventListener('online', () => {
-            this.isOnline = true;
-            logger.info('CloudSaveSystem', 'Network online - processing sync queue');
-            this.processSyncQueue();
-        });
+        // Store listener references for cleanup
+        this.networkListeners = {
+            online: () => {
+                this.isOnline = true;
+                logger.info('CloudSaveSystem', 'Network online - processing sync queue');
+                this.processSyncQueue();
+            },
+            offline: () => {
+                this.isOnline = false;
+                logger.info('CloudSaveSystem', 'Network offline - queuing changes');
+            }
+        };
 
-        window.addEventListener('offline', () => {
-            this.isOnline = false;
-            logger.info('CloudSaveSystem', 'Network offline - queuing changes');
-        });
+        window.addEventListener('online', this.networkListeners.online);
+        window.addEventListener('offline', this.networkListeners.offline);
+    }
+
+    /**
+     * Remove network event listeners to prevent memory leaks
+     */
+    removeNetworkListeners() {
+        if (typeof window === 'undefined' || !this.networkListeners) return;
+
+        window.removeEventListener('online', this.networkListeners.online);
+        window.removeEventListener('offline', this.networkListeners.offline);
+        this.networkListeners = null;
     }
 
     /**
@@ -521,7 +538,8 @@ export default class CloudSaveSystem {
         }
 
         this.autoSyncTimer = setInterval(() => {
-            if (this.isOnline && this.autoSyncEnabled) {
+            // Check both online status and that no sync is already in progress
+            if (this.isOnline && this.autoSyncEnabled && !this.isSyncing) {
                 this.sync().catch(err => {
                     logger.error('CloudSaveSystem', 'Auto-sync failed', { error: err.message });
                 });
@@ -1005,6 +1023,15 @@ export default class CloudSaveSystem {
         gameData.save();
 
         return { success: true, message: 'Cloud data cleared!' };
+    }
+
+    /**
+     * Cleanup resources to prevent memory leaks
+     */
+    destroy() {
+        this.stopAutoSync();
+        this.removeNetworkListeners();
+        this.db = null;
     }
 }
 

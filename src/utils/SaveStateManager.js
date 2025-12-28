@@ -247,8 +247,14 @@ export default class SaveStateManager {
     getSaveSlots() {
         const slots = [];
 
+        // Collect all keys first to avoid issues with localStorage changing during iteration
+        const keys = [];
         for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
+            keys.push(localStorage.key(i));
+        }
+
+        // Now iterate over the collected keys
+        for (const key of keys) {
             if (key && key.startsWith(this.storagePrefix)) {
                 const metadata = this.getMetadata(key);
                 if (metadata) {

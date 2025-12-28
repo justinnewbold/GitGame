@@ -86,6 +86,13 @@ export default class SettingsScene extends Phaser.Scene {
         this.createMotionToggle(yPos);
         yPos += 70;
 
+        // Features
+        this.createSection('🎮 Features', yPos);
+        yPos += 40;
+
+        this.createFeatureButtons(yPos);
+        yPos += 60;
+
         // Data Management
         this.createSection('💾 Data', yPos);
         yPos += 40;
@@ -309,6 +316,36 @@ export default class SettingsScene extends Phaser.Scene {
             color: '#888888',
             align: 'center'
         }).setOrigin(0.5);
+    }
+
+    createFeatureButtons(y) {
+        const buttons = [
+            { label: '🏆 Achievements', scene: 'AchievementsScene', color: 0x9b59b6 },
+            { label: '📋 Challenges', scene: 'ChallengesScene', color: 0xe67e22 },
+            { label: '🎨 Cosmetics', scene: 'CosmeticsScene', color: 0x3498db }
+        ];
+
+        buttons.forEach((btn, index) => {
+            const x = 250 + (index * 150);
+
+            const btnBg = this.add.rectangle(x, y, 130, 40, btn.color, 0.8);
+            btnBg.setStrokeStyle(2, 0xffffff);
+            btnBg.setInteractive({ useHandCursor: true });
+
+            this.add.text(x, y, btn.label, {
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                color: '#ffffff',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            btnBg.on('pointerdown', () => {
+                this.scene.start(btn.scene);
+            });
+
+            btnBg.on('pointerover', () => btnBg.setAlpha(1.0));
+            btnBg.on('pointerout', () => btnBg.setAlpha(0.8));
+        });
     }
 
     createDataButtons(y) {

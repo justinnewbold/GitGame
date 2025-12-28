@@ -110,8 +110,8 @@ export default class GitSurvivorScene extends BaseScene {
         // Mobile: Virtual Joystick (only on touch devices)
         this.setupMobileControls();
 
-        // Mobile touch controls for shooting
-        this.input.on('pointerdown', (pointer) => {
+        // Mobile touch controls for shooting (store handler for cleanup)
+        this.shootHandler = (pointer) => {
             // Don't shoot if touching the virtual joystick area
             if (this.virtualJoystick && pointer.x < 150 && pointer.y > height - 150) {
                 return;
@@ -119,7 +119,8 @@ export default class GitSurvivorScene extends BaseScene {
             if (pointer.y > 150) {
                 this.shootProjectile(pointer.x, pointer.y);
             }
-        });
+        };
+        this.input.on('pointerdown', this.shootHandler);
 
         // Spawn enemies (tracked for automatic cleanup)
         this.enemySpawnTimer = this.trackTimer(this.time.addEvent({
@@ -959,28 +960,32 @@ export default class GitSurvivorScene extends BaseScene {
         }).setOrigin(0.5);
         shareBtn.setInteractive({ useHandCursor: true });
         shareBtn.on('pointerdown', async () => {
-            const difficulty = gameData.getDifficulty();
-            const result = await shareManager.shareScore('Git Survivor', this.score, {
-                difficulty: difficulty,
-                enemiesKilled: this.enemiesKilled
-            });
-
-            if (result.success) {
-                // Show success feedback
-                const feedback = this.add.text(width / 2, height / 2 + 160,
-                    result.method === 'clipboard' ? '✓ Copied to clipboard!' : '✓ Shared!', {
-                    fontSize: '12px',
-                    fontFamily: 'monospace',
-                    color: '#00ff00'
-                }).setOrigin(0.5);
-
-                this.tweens.add({
-                    targets: feedback,
-                    alpha: 0,
-                    duration: 2000,
-                    delay: 1000,
-                    onComplete: () => feedback.destroy()
+            try {
+                const difficulty = gameData.getDifficulty();
+                const result = await shareManager.shareScore('Git Survivor', this.score, {
+                    difficulty: difficulty,
+                    enemiesKilled: this.enemiesKilled
                 });
+
+                if (result.success) {
+                    // Show success feedback
+                    const feedback = this.add.text(width / 2, height / 2 + 160,
+                        result.method === 'clipboard' ? '✓ Copied to clipboard!' : '✓ Shared!', {
+                        fontSize: '12px',
+                        fontFamily: 'monospace',
+                        color: '#00ff00'
+                    }).setOrigin(0.5);
+
+                    this.tweens.add({
+                        targets: feedback,
+                        alpha: 0,
+                        duration: 2000,
+                        delay: 1000,
+                        onComplete: () => feedback.destroy()
+                    });
+                }
+            } catch (error) {
+                logger.error('GitSurvivorScene', 'Failed to share score', { error: error.message });
             }
         });
 
@@ -1083,6 +1088,12 @@ export default class GitSurvivorScene extends BaseScene {
         // Cleanup managers
         if (this.powerUpManager) this.powerUpManager.cleanup();
         if (this.sounds) this.sounds.destroy();
+
+        // Cleanup event listeners to prevent memory leaks
+        if (this.shootHandler) {
+            this.input.off('pointerdown', this.shootHandler);
+            this.shootHandler = null;
+        }
 
         // Cleanup virtual joystick
         if (this.virtualJoystick) {

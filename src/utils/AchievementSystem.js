@@ -288,6 +288,13 @@ export default class AchievementSystem {
     }
 
     /**
+     * Get progress for a cumulative achievement
+     */
+    getProgress(achievementId) {
+        return gameData.data.achievements.progress[achievementId] || 0;
+    }
+
+    /**
      * Check and unlock achievements based on game stats
      */
     checkAchievements(gameStats) {
